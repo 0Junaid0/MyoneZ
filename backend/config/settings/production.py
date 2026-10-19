@@ -1,19 +1,15 @@
 import os
-from urllib.parse import urlparse
+from pathlib import Path
 
 from .base import *  # noqa: F403
 
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
-db = urlparse(os.environ["DATABASE_URL"])
+_sqlite_path = os.getenv("SQLITE_PATH", "").strip()
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": db.path.lstrip("/"),
-        "USER": db.username,
-        "PASSWORD": db.password,
-        "HOST": db.hostname,
-        "PORT": db.port or 5432,
-        "CONN_MAX_AGE": 60,
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(_sqlite_path) if _sqlite_path else BASE_DIR / "db.sqlite3",  # noqa: F405
+        "OPTIONS": {"timeout": 20},
     }
 }
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
