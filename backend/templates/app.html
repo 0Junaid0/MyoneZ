@@ -1,0 +1,310 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MyoneZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app.css' %}?v=17">
+  <script src="{% static 'app.js' %}?v=31" defer></script>
+</head>
+<body>
+  <div id="toast" class="toast" role="status"></div>
+
+  <main id="auth-screen" class="auth-screen">
+    <section class="auth-story">
+      <a class="brand brand-light" href="/"><span class="brand-mark">M</span> MyoneZ</a>
+      <div class="story-copy">
+        <span class="eyebrow">Relationships, remembered</span>
+        <h1>Stay close to the people who matter.</h1>
+        <p>Remember the details, reconnect at the right time, and write messages that feel genuinely personal.</p>
+      </div>
+      <div class="story-card">
+        <div class="avatar-stack"><span>MC</span><span>AK</span><span>+8</span></div>
+        <p>“A thoughtful message at the right moment can change a relationship.”</p>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-box">
+        <div class="mobile-brand brand"><span class="brand-mark">M</span> MyoneZ</div>
+        <span class="eyebrow accent">Welcome back</span>
+        <h2 id="auth-title">Sign in to your space</h2>
+        <p id="auth-subtitle" class="muted">Your relationships are private and always yours.</p>
+        <form id="auth-form">
+          <div id="name-field" class="field hidden">
+            <label for="auth-name">Your name</label>
+            <input id="auth-name" name="name" autocomplete="name" placeholder="Alex Morgan">
+          </div>
+          <div id="email-field" class="field">
+            <label for="auth-email">Email address</label>
+            <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+          <div id="password-field" class="field">
+            <label for="auth-password">Password</label>
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="At least 10 characters" required>
+          </div>
+          <div id="otp-step" class="field hidden">
+            <label for="auth-otp">Verification code</label>
+            <input id="auth-otp" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code">
+            <p id="otp-hint" class="hint"></p>
+          </div>
+          <button class="button primary full" type="submit"><span id="auth-submit-label">Sign in</span><span aria-hidden="true">→</span></button>
+        </form>
+        <button id="auth-switch" class="text-button" type="button">New here? Create an account</button>
+        <p id="auth-error" class="form-error" role="alert"></p>
+      </div>
+    </section>
+  </main>
+
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-mark">M</span> MyoneZ</a>
+      <nav>
+        <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
+        <button class="nav-item" data-view="contacts"><span>♙</span> People</button>
+        <button class="nav-item" data-view="touchpoints"><span>◷</span> Touchpoints</button>
+        <button class="nav-item" data-view="drafts"><span>✎</span> Drafts</button>
+        <button class="nav-item" data-view="email"><span>✉</span> Email</button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="note-icon">✦</span>
+        <strong>Thoughtful by design</strong>
+        <p>Your memories are only used for drafting when you allow it.</p>
+      </div>
+      <div class="profile">
+        <span id="user-avatar" class="avatar">U</span>
+        <span><strong id="user-name">User</strong><small id="user-email"></small></span>
+        <button id="logout-button" class="button secondary" type="button">Sign out</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button id="menu-button" class="icon-button mobile-menu">☰</button>
+        <div>
+          <p id="today-label" class="overline"></p>
+          <h2 id="page-title">Good to see you</h2>
+        </div>
+        <div class="top-actions">
+          <button id="draft-button" class="button secondary">✦ Draft a message</button>
+          <button id="add-contact-button" class="button primary">＋ Add person</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <div id="due-sends"></div>
+        <section id="overview-view" class="view">
+          <div class="hero">
+            <div>
+              <span class="eyebrow">Your relationship rhythm</span>
+              <h1>A little attention goes a long way.</h1>
+              <p id="hero-copy">See who could use a hello and keep your relationships moving.</p>
+            </div>
+            <div class="hero-orbit"><span>♥</span><i></i><i></i><i></i></div>
+          </div>
+          <div id="stats-grid" class="stats-grid"></div>
+          <div class="grid-two">
+            <section class="panel">
+              <div class="panel-heading">
+                <div><span class="overline">Coming up</span><h3>People to reach out to</h3></div>
+                <button class="text-button" data-go="touchpoints">View all</button>
+              </div>
+              <div id="upcoming-list" class="list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div><span class="overline">Your circle</span><h3>Recently added</h3></div>
+                <button class="text-button" data-go="contacts">View all</button>
+              </div>
+              <div id="recent-contacts" class="contact-grid compact"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="contacts-view" class="view hidden">
+          <div class="section-heading">
+            <div><span class="eyebrow accent">Your people</span><h1>Relationships worth remembering</h1></div>
+            <div class="search"><span>⌕</span><input id="contact-search" placeholder="Search by name, email, or number"></div>
+          </div>
+          <div id="contacts-grid" class="contact-grid"></div>
+        </section>
+
+        <section id="touchpoints-view" class="view hidden">
+          <div class="section-heading">
+            <div><span class="eyebrow accent">Stay in touch</span><h1>Upcoming touchpoints</h1></div>
+          </div>
+          <div id="touchpoints-list" class="timeline-list"></div>
+        </section>
+
+        <section id="drafts-view" class="view hidden">
+          <div class="section-heading">
+            <div><span class="eyebrow accent">By send time</span><h1>Drafts and scheduled</h1></div>
+            <div class="search"><span>⌕</span><input id="draft-search" placeholder="Search by name, email, or number"></div>
+          </div>
+          <div id="drafts-list"></div>
+        </section>
+
+        <section id="email-view" class="view hidden">
+          <div class="section-heading">
+            <div><span class="eyebrow accent">Sending account</span><h1>Email</h1></div>
+          </div>
+          <form id="email-form" class="panel form-grid">
+            <div class="field span-two"><label for="mail-from">Sending address</label><input id="mail-from" name="from_email" type="email" placeholder="you@gmail.com" required></div>
+            <div class="field"><label for="mail-host">Mail server</label><input id="mail-host" name="host" placeholder="smtp.gmail.com" required></div>
+            <div class="field"><label for="mail-port">Port</label><input id="mail-port" name="port" type="number" min="1" max="65535" value="587" required></div>
+            <div class="field"><label for="mail-username">Username</label><input id="mail-username" name="username" autocomplete="off" placeholder="you@gmail.com"></div>
+            <div class="field"><label for="mail-security">Security</label><select id="mail-security" name="security"><option value="tls">TLS</option><option value="ssl">SSL</option><option value="none">None</option></select></div>
+            <div class="field span-two"><label for="mail-password">Password</label><input id="mail-password" name="password" type="password" autocomplete="new-password" placeholder="App password"><p class="hint">For Gmail, use smtp.gmail.com, port 587, TLS, and an app password. This is only for Send test. A message to someone opens in your mail app, with the recipient and text filled in. Leave the password blank to keep the one already saved.</p></div>
+            <div class="button-row span-two">
+              <button id="email-test" class="button secondary" type="button">Send test</button>
+              <button class="button primary" type="submit">Save email</button>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <section id="contact-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <span class="eyebrow accent" id="contact-kicker">Grow your circle</span>
+      <h2 id="contact-title">Add someone important</h2>
+      <form id="contact-form" class="form-grid">
+        <div class="field span-two"><label>Name</label><input name="name" required placeholder="Full name"></div>
+        <div class="field"><label>Relationship</label><select name="relationship"><option value="friend">Friend</option><option value="family">Family</option><option value="colleague">Colleague</option><option value="mentor">Mentor</option><option value="other">Other</option></select></div>
+        <div class="field"><label>Preferred channel</label><select name="preferred_channel"><option value="">Not set</option><option value="whatsapp">WhatsApp</option><option value="email">Gmail</option><option value="telegram">Telegram</option><option value="messenger">Messenger</option></select></div>
+        <div class="field"><label>Email</label><input name="email" type="email" placeholder="name@example.com"></div>
+        <div class="field"><label>Phone</label><input name="phone" placeholder="+14155552671"></div>
+        <div class="field"><label>WhatsApp</label><input name="whatsapp" placeholder="+14155552671"></div>
+        <div class="field"><label>Telegram phone</label><input name="telegram" placeholder="+8801711123456"></div>
+        <div class="field span-two"><label>Messenger username</label><input name="messenger" placeholder="rafiq.ahmed.10"></div>
+        <details class="tutorial span-two">
+          <summary>How to find a Messenger username</summary>
+          <ol class="tutorial-steps">
+            <li>
+              <div class="phone-shot"><div class="shot-bar"></div><p class="shot-name">Rafiq Ahmed</p><p class="shot-line">Hey, are you free?</p></div>
+              <span>Open Messenger and the chat with that person.</span>
+            </li>
+            <li>
+              <div class="phone-shot"><div class="shot-bar"></div><p class="shot-name shot-tap">Rafiq Ahmed</p><p class="shot-line">Tap the name at the top.</p></div>
+              <span>Tap their name at the top of the chat to open the profile.</span>
+            </li>
+            <li>
+              <div class="phone-shot"><div class="shot-bar"></div><p class="shot-name">Rafiq Ahmed</p><p class="shot-user">rafiq.ahmed.10</p></div>
+              <span>The username sits under the name. It looks like rafiq.ahmed.10.</span>
+            </li>
+            <li>
+              <div class="phone-shot"><div class="shot-bar"></div><p class="shot-line">m.me/rafiq.ahmed.10</p></div>
+              <span>From a profile link, use the last part of m.me/ or facebook.com/.</span>
+            </li>
+          </ol>
+        </details>
+        <div class="field span-two"><label>Birthday</label><input name="birthday" type="date"></div>
+        <button id="contact-submit" class="button primary span-two" type="submit">Save person</button>
+      </form>
+    </section>
+
+    <section id="schedule-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <span class="eyebrow accent">Stay in touch</span>
+      <h2 id="schedule-title">Edit schedule</h2>
+      <form id="schedule-form" class="form-grid">
+        <div class="field span-two">
+          <label for="schedule-due">Next check-in</label>
+          <input id="schedule-due" name="due_at" type="datetime-local" required>
+          <p class="hint">Pick any future date and time.</p>
+        </div>
+        <button class="button primary span-two" type="submit">Save time</button>
+      </form>
+    </section>
+
+    <section id="rhythm-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <span class="eyebrow accent">Stay in touch</span>
+      <h2 id="rhythm-title">Outreach rhythm</h2>
+      <form id="rhythm-form" class="form-grid">
+        <div class="field span-two">
+          <label for="rhythm-days">Every</label>
+          <input id="rhythm-days" name="days" type="number" min="1" max="3650" required>
+          <p class="hint">Days between check-ins.</p>
+        </div>
+        <button class="button primary span-two" type="submit">Save rhythm</button>
+      </form>
+    </section>
+
+    <section id="send-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <span id="send-kicker" class="eyebrow accent">Ready to send</span>
+      <h2 id="send-title">Message</h2>
+      <p id="send-hint" class="hint"></p>
+      <div class="copy-block">
+        <div class="copy-label"><span>To</span><button id="copy-recipient" class="text-button" type="button">Copy</button></div>
+        <p id="send-recipient"></p>
+      </div>
+      <div id="send-subject-block" class="copy-block hidden">
+        <div class="copy-label"><span>Subject</span><button id="copy-subject" class="text-button" type="button">Copy</button></div>
+        <p id="send-subject"></p>
+      </div>
+      <div class="copy-block">
+        <div class="copy-label"><span>Message</span><button id="copy-message" class="text-button" type="button">Copy</button></div>
+        <pre id="send-body"></pre>
+      </div>
+      <a id="send-link" class="button primary full" href="#" rel="noopener">Open</a>
+    </section>
+
+    <section id="detail-modal" class="modal detail-modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <div id="contact-detail"></div>
+    </section>
+
+    <section id="draft-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close>×</button>
+      <span class="eyebrow accent">Write thoughtfully</span>
+      <h2 id="draft-title">Draft a personal message</h2>
+      <form id="draft-form" class="form-grid">
+        <div class="field span-two">
+          <label for="draft-contact-search">Person</label>
+          <div class="person-picker">
+            <input id="draft-contact-search" type="search" placeholder="Search by name, email, or number" autocomplete="off">
+            <input id="draft-contact" name="contact" type="hidden">
+            <div id="draft-contact-list" class="person-results hidden"></div>
+          </div>
+        </div>
+        <div class="field"><label>Purpose</label><select name="purpose"><option value="check_in">Check in</option><option value="reconnect">Reconnect</option><option value="birthday">Birthday</option><option value="congratulations">Congratulations</option><option value="gratitude">Gratitude</option></select></div>
+        <div class="field"><label>Tone</label><select name="tone"><option value="friendly">Friendly</option><option value="warm">Warm</option><option value="casual">Casual</option><option value="professional">Professional</option></select></div>
+        <div class="field"><label>Length</label><select name="length"><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></div>
+        <div class="field"><label>Direction</label><input name="custom_instruction" placeholder="Mention their new role"></div>
+        <div class="field span-two"><label for="message-channel">Send through</label><select id="message-channel" name="channel"><option value="whatsapp">WhatsApp</option><option value="email">Gmail</option><option value="telegram">Telegram</option><option value="messenger">Messenger</option></select><p id="channel-hint" class="hint"></p></div>
+        <div class="field span-two">
+          <label for="send-in">Schedule</label>
+          <div class="schedule-inputs">
+            <input id="send-in" name="send_in" type="number" min="1" max="36500" value="1" required>
+            <select id="send-unit" name="send_unit">
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+              <option value="days" selected>Days</option>
+            </select>
+          </div>
+          <p class="hint">From 1 minute to any number of days.</p>
+        </div>
+        <button id="draft-submit" class="button primary span-two" type="submit">✦ Generate draft</button>
+      </form>
+      <div id="draft-result" class="draft-result hidden">
+        <label for="draft-body">Your draft</label>
+        <textarea id="draft-body" rows="7"></textarea>
+        <div class="button-row">
+          <button id="delete-open-draft" class="button danger" type="button">Delete</button>
+          <button id="save-draft" class="button secondary" type="button">Save changes</button>
+          <button id="approve-draft" class="button primary" type="button">Approve and schedule</button>
+        </div>
+        <p id="draft-schedule" class="schedule-note hidden"></p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

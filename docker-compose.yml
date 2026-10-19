@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pocketcrm
+      POSTGRES_USER: pocketcrm
+      POSTGRES_PASSWORD: pocketcrm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pocketcrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api: &app
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-unsafe-key-7Zp4vQ9xLm2cN8sT5wR1kF6jH3dB0yG}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://pocketcrm:pocketcrm@db:5432/pocketcrm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_COOKIE_SECURE: ${JWT_COOKIE_SECURE:-false}
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-false}
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    <<: *app
+    command: celery -A config worker -l INFO
+    ports: []
+    healthcheck:
+      disable: true
+
+  beat:
+    <<: *app
+    command: celery -A config beat -l INFO
+    ports: []
+    healthcheck:
+      disable: true
+
+volumes:
+  postgres_data:
+  redis_data:
