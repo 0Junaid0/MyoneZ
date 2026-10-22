@@ -1,0 +1,3228 @@
+openapi: 3.0.3
+info:
+  title: MyoneZ API
+  version: 1.0.0
+  description: Private relationship management API
+paths:
+  /api/v1/analytics/overview/:
+    get:
+      operationId: v1_analytics_overview_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsOverview'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Login'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Logout'
+          description: ''
+  /api/v1/auth/password-reset/:
+    post:
+      operationId: v1_auth_password_reset_create
+      description: |-
+        Step 1 of reset: emails a 6-digit code (the app has no web page for a link).
+
+        The answer looks the same whether or not the email has an account.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetRequest'
+          description: ''
+  /api/v1/auth/password-reset/confirm/:
+    post:
+      operationId: v1_auth_password_reset_confirm_create
+      description: 'Step 2 of reset: the emailed code + a new password. Signs out
+        every other session.'
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetConfirm'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: v1_auth_refresh_create
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/register/:
+    post:
+      operationId: v1_auth_register_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+  /api/v1/auth/verify-otp/:
+    post:
+      operationId: v1_auth_verify_otp_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OtpVerify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OtpVerify'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpVerify'
+          description: ''
+  /api/v1/contacts/:
+    get:
+      operationId: v1_contacts_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: relationship
+        schema:
+          type: string
+          enum:
+          - colleague
+          - family
+          - friend
+          - mentor
+          - other
+        description: |-
+          * `friend` - Friend
+          * `family` - Family
+          * `colleague` - Colleague
+          * `mentor` - Mentor
+          * `other` - Other
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - archived
+          - paused
+        description: |-
+          * `active` - Active
+          * `paused` - Paused
+          * `archived` - Archived
+      - in: query
+        name: tags
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        explode: true
+        style: form
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContactList'
+          description: ''
+    post:
+      operationId: v1_contacts_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contact'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+  /api/v1/contacts/{contact_pk}/interactions/:
+    get:
+      operationId: v1_contacts_interactions_list
+      parameters:
+      - in: query
+        name: channel
+        schema:
+          type: string
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - call
+          - custom
+          - in_person
+          - message
+          - occasion
+          - video
+        description: |-
+          * `call` - Phone call
+          * `message` - Text/message
+          * `in_person` - In-person meeting
+          * `video` - Video call
+          * `occasion` - Special occasion
+          * `custom` - Custom
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: use_for_drafting
+        schema:
+          type: boolean
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInteractionList'
+          description: ''
+    post:
+      operationId: v1_contacts_interactions_create
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Interaction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Interaction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Interaction'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+          description: ''
+  /api/v1/contacts/{contact_pk}/interactions/{id}/:
+    get:
+      operationId: v1_contacts_interactions_retrieve
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+          description: ''
+    patch:
+      operationId: v1_contacts_interactions_partial_update
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInteraction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInteraction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInteraction'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Interaction'
+          description: ''
+    delete:
+      operationId: v1_contacts_interactions_destroy
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/contacts/{contact_pk}/memories/:
+    get:
+      operationId: v1_contacts_memories_list
+      parameters:
+      - in: query
+        name: allow_drafting
+        schema:
+          type: boolean
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - discussion
+          - interest
+          - life_event
+          - other
+          - plan
+          - preference
+          - shared_experience
+        description: |-
+          * `interest` - Interest
+          * `life_event` - Life event
+          * `shared_experience` - Shared experience
+          * `discussion` - Discussion
+          * `plan` - Plan
+          * `preference` - Preference
+          * `other` - Other
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMemoryList'
+          description: ''
+    post:
+      operationId: v1_contacts_memories_create
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Memory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Memory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Memory'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+          description: ''
+  /api/v1/contacts/{contact_pk}/memories/{id}/:
+    get:
+      operationId: v1_contacts_memories_retrieve
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+          description: ''
+    patch:
+      operationId: v1_contacts_memories_partial_update
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMemory'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMemory'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMemory'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+          description: ''
+    delete:
+      operationId: v1_contacts_memories_destroy
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/contacts/{contact_pk}/schedules/:
+    get:
+      operationId: v1_contacts_schedules_list
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedScheduleList'
+          description: ''
+    post:
+      operationId: v1_contacts_schedules_create
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Schedule'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+  /api/v1/contacts/{contact_pk}/schedules/{id}/:
+    get:
+      operationId: v1_contacts_schedules_retrieve
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+    patch:
+      operationId: v1_contacts_schedules_partial_update
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSchedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSchedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSchedule'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Schedule'
+          description: ''
+    delete:
+      operationId: v1_contacts_schedules_destroy
+      parameters:
+      - in: path
+        name: contact_pk
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/contacts/{id}/:
+    get:
+      operationId: v1_contacts_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+    put:
+      operationId: v1_contacts_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Contact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contact'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+    patch:
+      operationId: v1_contacts_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedContact'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+    delete:
+      operationId: v1_contacts_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/contacts/{id}/timeline/:
+    get:
+      operationId: v1_contacts_timeline_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this contact.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+          description: ''
+  /api/v1/devices/:
+    post:
+      operationId: v1_devices_create
+      description: POST saves this phone's Expo push token for the signed-in user;
+        DELETE removes it.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Device'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Device'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+          description: ''
+    delete:
+      operationId: v1_devices_destroy
+      description: POST saves this phone's Expo push token for the signed-in user;
+        DELETE removes it.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/integrations/:
+    get:
+      operationId: v1_integrations_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Integration'
+          description: ''
+  /api/v1/messages/:
+    get:
+      operationId: v1_messages_list
+      parameters:
+      - in: query
+        name: contact
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: purpose
+        schema:
+          type: string
+          enum:
+          - birthday
+          - check_in
+          - congratulations
+          - custom
+          - gratitude
+          - reconnect
+        description: |-
+          * `check_in` - Check-in
+          * `birthday` - Birthday
+          * `congratulations` - Congratulations
+          * `gratitude` - Gratitude
+          * `reconnect` - Reconnect
+          * `custom` - Custom
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - cancelled
+          - delivered
+          - draft
+          - failed
+          - queued
+          - sent
+        description: |-
+          * `draft` - Draft
+          * `approved` - Approved
+          * `queued` - Queued
+          * `sent` - Sent
+          * `delivered` - Delivered
+          * `failed` - Failed
+          * `cancelled` - Cancelled
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMessageList'
+          description: ''
+    post:
+      operationId: v1_messages_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/:
+    get:
+      operationId: v1_messages_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    put:
+      operationId: v1_messages_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    patch:
+      operationId: v1_messages_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMessage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMessage'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    delete:
+      operationId: v1_messages_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/messages/{id}/mark-sent/:
+    post:
+      operationId: v1_messages_mark_sent_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/regenerate/:
+    post:
+      operationId: v1_messages_regenerate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/send/:
+    post:
+      operationId: v1_messages_send_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/{id}/send-sheet/:
+    get:
+      operationId: v1_messages_send_sheet_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this message.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/dispatch-due/:
+    post:
+      operationId: v1_messages_dispatch_due_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/messages/generate/:
+    post:
+      operationId: v1_messages_generate_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Message'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Message'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: v1_notifications_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/notifications/{id}/open/:
+    post:
+      operationId: v1_notifications_open_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/tags/:
+    get:
+      operationId: v1_tags_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTagList'
+          description: ''
+    post:
+      operationId: v1_tags_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+  /api/v1/tags/{id}/:
+    get:
+      operationId: v1_tags_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tag.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    put:
+      operationId: v1_tags_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tag.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    patch:
+      operationId: v1_tags_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tag.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+    delete:
+      operationId: v1_tags_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tag.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/touchpoints/:
+    get:
+      operationId: v1_touchpoints_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: schedule
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: schedule__contact
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - completed
+          - overdue
+          - skipped
+          - snoozed
+          - upcoming
+        description: |-
+          * `upcoming` - Upcoming
+          * `overdue` - Overdue
+          * `snoozed` - Snoozed
+          * `completed` - Completed
+          * `skipped` - Skipped
+          * `cancelled` - Cancelled
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTouchpointList'
+          description: ''
+  /api/v1/touchpoints/{id}/:
+    get:
+      operationId: v1_touchpoints_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+    put:
+      operationId: v1_touchpoints_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Touchpoint'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Touchpoint'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Touchpoint'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+    patch:
+      operationId: v1_touchpoints_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+    delete:
+      operationId: v1_touchpoints_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/touchpoints/{id}/reschedule/:
+    patch:
+      operationId: v1_touchpoints_reschedule_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+  /api/v1/touchpoints/{id}/transition/:
+    patch:
+      operationId: v1_touchpoints_transition_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this touchpoint.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTouchpoint'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+  /api/v1/touchpoints/overdue/:
+    get:
+      operationId: v1_touchpoints_overdue_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+  /api/v1/touchpoints/upcoming/:
+    get:
+      operationId: v1_touchpoints_upcoming_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Touchpoint'
+          description: ''
+  /api/v1/users/me/:
+    get:
+      operationId: v1_users_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_users_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: v1_users_me_destroy
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/me/email/:
+    get:
+      operationId: v1_users_me_email_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAccount'
+          description: ''
+    post:
+      operationId: v1_users_me_email_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailAccount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailAccount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailAccount'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAccount'
+          description: ''
+    patch:
+      operationId: v1_users_me_email_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailAccount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailAccount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEmailAccount'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAccount'
+          description: ''
+components:
+  schemas:
+    AnalyticsOverview:
+      type: object
+      properties:
+        active_contacts:
+          type: integer
+        upcoming_touchpoints:
+          type: integer
+        overdue_touchpoints:
+          type: integer
+        contacted_last_30_days:
+          type: integer
+        activity_trend:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        delivery_status:
+          type: object
+          additionalProperties: {}
+        recent_interactions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - active_contacts
+      - activity_trend
+      - contacted_last_30_days
+      - delivery_status
+      - overdue_touchpoints
+      - recent_interactions
+      - upcoming_touchpoints
+    BlankEnum:
+      enum:
+      - ''
+    CategoryEnum:
+      enum:
+      - interest
+      - life_event
+      - shared_experience
+      - discussion
+      - plan
+      - preference
+      - other
+      type: string
+      description: |-
+        * `interest` - Interest
+        * `life_event` - Life event
+        * `shared_experience` - Shared experience
+        * `discussion` - Discussion
+        * `plan` - Plan
+        * `preference` - Preference
+        * `other` - Other
+    Contact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 32
+        whatsapp:
+          type: string
+          maxLength: 32
+        telegram:
+          type: string
+          maxLength: 64
+        messenger:
+          type: string
+          maxLength: 64
+        relationship:
+          $ref: '#/components/schemas/RelationshipEnum'
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          readOnly: true
+        birthday:
+          type: string
+          format: date
+          nullable: true
+        timezone:
+          type: string
+          maxLength: 64
+        preferred_channel:
+          oneOf:
+          - $ref: '#/components/schemas/PreferredChannelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        status:
+          $ref: '#/components/schemas/ContactStatusEnum'
+        last_contacted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        schedule:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - last_contacted_at
+      - name
+      - relationship
+      - schedule
+      - tags
+      - updated_at
+    ContactStatusEnum:
+      enum:
+      - active
+      - paused
+      - archived
+      type: string
+      description: |-
+        * `active` - Active
+        * `paused` - Paused
+        * `archived` - Archived
+    DeliveryAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          type: string
+          maxLength: 30
+        status:
+          $ref: '#/components/schemas/DeliveryAttemptStatusEnum'
+        error:
+          type: string
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - provider
+      - status
+    DeliveryAttemptStatusEnum:
+      enum:
+      - created
+      - handed_off
+      - sent
+      - failed
+      type: string
+      description: |-
+        * `created` - Created
+        * `handed_off` - Handed off
+        * `sent` - Sent
+        * `failed` - Failed
+    Device:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 255
+        platform:
+          $ref: '#/components/schemas/PlatformEnum'
+      required:
+      - platform
+      - token
+    EmailAccount:
+      type: object
+      properties:
+        from_email:
+          type: string
+          format: email
+          maxLength: 254
+        host:
+          type: string
+          maxLength: 255
+        port:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        username:
+          type: string
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+        password_set:
+          type: string
+          readOnly: true
+        security:
+          $ref: '#/components/schemas/SecurityEnum'
+      required:
+      - from_email
+      - password_set
+    Integration:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mode:
+          type: string
+        connected:
+          type: boolean
+        supports_delivery_receipts:
+          type: boolean
+      required:
+      - connected
+      - id
+      - mode
+      - name
+      - supports_delivery_receipts
+    Interaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        touchpoint:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        channel:
+          type: string
+          maxLength: 30
+        notes:
+          type: string
+          maxLength: 4000
+        use_for_drafting:
+          type: boolean
+        occurred_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - contact
+      - created_at
+      - id
+      - kind
+      - occurred_at
+      - updated_at
+    KindEnum:
+      enum:
+      - call
+      - message
+      - in_person
+      - video
+      - occasion
+      - custom
+      type: string
+      description: |-
+        * `call` - Phone call
+        * `message` - Text/message
+        * `in_person` - In-person meeting
+        * `video` - Video call
+        * `occasion` - Special occasion
+        * `custom` - Custom
+    LengthEnum:
+      enum:
+      - short
+      - medium
+      - long
+      type: string
+      description: |-
+        * `short` - Short
+        * `medium` - Medium
+        * `long` - Long
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+      - email
+      - password
+    Logout:
+      type: object
+      description: Mobile sends its refresh token (and push token) in the body; browsers
+        use the cookie.
+      properties:
+        refresh:
+          type: string
+        device_token:
+          type: string
+    Memory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        content:
+          type: string
+          maxLength: 4000
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        sensitivity:
+          type: string
+          maxLength: 30
+        allow_drafting:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - contact
+      - content
+      - created_at
+      - id
+      - updated_at
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+        touchpoint:
+          type: string
+          format: uuid
+          nullable: true
+        purpose:
+          $ref: '#/components/schemas/PurposeEnum'
+        tone:
+          $ref: '#/components/schemas/ToneEnum'
+        length:
+          $ref: '#/components/schemas/LengthEnum'
+        custom_instruction:
+          type: string
+          maxLength: 1000
+        body:
+          type: string
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/MessageStatusEnum'
+        channel:
+          type: string
+          maxLength: 20
+        scheduled_for:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        context_snapshot:
+          readOnly: true
+        generator:
+          type: string
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        handoff_url:
+          type: string
+          readOnly: true
+        delivery_attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryAttempt'
+          readOnly: true
+        contact_info:
+          type: string
+          readOnly: true
+        touchpoint_due_at:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        send_in:
+          type: integer
+          maximum: 36500
+          minimum: 1
+          writeOnly: true
+        send_unit:
+          allOf:
+          - $ref: '#/components/schemas/SendUnitEnum'
+          writeOnly: true
+      required:
+      - approved_at
+      - body
+      - contact
+      - contact_info
+      - context_snapshot
+      - created_at
+      - delivery_attempts
+      - generator
+      - handoff_url
+      - id
+      - length
+      - purpose
+      - scheduled_for
+      - tone
+      - touchpoint_due_at
+      - updated_at
+    MessageStatusEnum:
+      enum:
+      - draft
+      - approved
+      - queued
+      - sent
+      - delivered
+      - failed
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `approved` - Approved
+        * `queued` - Queued
+        * `sent` - Sent
+        * `delivered` - Delivered
+        * `failed` - Failed
+        * `cancelled` - Cancelled
+    ModeEnum:
+      enum:
+      - fixed
+      - randomized
+      type: string
+      description: |-
+        * `fixed` - Fixed
+        * `randomized` - Randomized
+    OtpVerify:
+      type: object
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: ^\d{6}$
+      required:
+      - challenge_id
+      - code
+    PaginatedContactList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contact'
+    PaginatedInteractionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Interaction'
+    PaginatedMemoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Memory'
+    PaginatedMessageList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+    PaginatedScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Schedule'
+    PaginatedTagList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+    PaginatedTouchpointList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Touchpoint'
+    PasswordResetConfirm:
+      type: object
+      description: 'Step 2 of reset: the 6-digit code from the email plus the new
+        password (no web link).'
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: ^\d{6}$
+        new_password:
+          type: string
+          minLength: 10
+      required:
+      - challenge_id
+      - code
+      - new_password
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    PatchedContact:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 32
+        whatsapp:
+          type: string
+          maxLength: 32
+        telegram:
+          type: string
+          maxLength: 64
+        messenger:
+          type: string
+          maxLength: 64
+        relationship:
+          $ref: '#/components/schemas/RelationshipEnum'
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          readOnly: true
+        birthday:
+          type: string
+          format: date
+          nullable: true
+        timezone:
+          type: string
+          maxLength: 64
+        preferred_channel:
+          oneOf:
+          - $ref: '#/components/schemas/PreferredChannelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        status:
+          $ref: '#/components/schemas/ContactStatusEnum'
+        last_contacted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        schedule:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedEmailAccount:
+      type: object
+      properties:
+        from_email:
+          type: string
+          format: email
+          maxLength: 254
+        host:
+          type: string
+          maxLength: 255
+        port:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        username:
+          type: string
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+        password_set:
+          type: string
+          readOnly: true
+        security:
+          $ref: '#/components/schemas/SecurityEnum'
+    PatchedInteraction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        touchpoint:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        channel:
+          type: string
+          maxLength: 30
+        notes:
+          type: string
+          maxLength: 4000
+        use_for_drafting:
+          type: boolean
+        occurred_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMemory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        content:
+          type: string
+          maxLength: 4000
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        sensitivity:
+          type: string
+          maxLength: 30
+        allow_drafting:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+        touchpoint:
+          type: string
+          format: uuid
+          nullable: true
+        purpose:
+          $ref: '#/components/schemas/PurposeEnum'
+        tone:
+          $ref: '#/components/schemas/ToneEnum'
+        length:
+          $ref: '#/components/schemas/LengthEnum'
+        custom_instruction:
+          type: string
+          maxLength: 1000
+        body:
+          type: string
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/MessageStatusEnum'
+        channel:
+          type: string
+          maxLength: 20
+        scheduled_for:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        context_snapshot:
+          readOnly: true
+        generator:
+          type: string
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        handoff_url:
+          type: string
+          readOnly: true
+        delivery_attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryAttempt'
+          readOnly: true
+        contact_info:
+          type: string
+          readOnly: true
+        touchpoint_due_at:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        send_in:
+          type: integer
+          maximum: 36500
+          minimum: 1
+          writeOnly: true
+        send_unit:
+          allOf:
+          - $ref: '#/components/schemas/SendUnitEnum'
+          writeOnly: true
+    PatchedSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        interval_min_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        interval_max_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        next_due_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ScheduleStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+    PatchedTouchpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        schedule:
+          type: string
+          format: uuid
+          readOnly: true
+        contact_id:
+          type: string
+          format: uuid
+          readOnly: true
+        due_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TouchpointStatusEnum'
+        reasons:
+          type: string
+          readOnly: true
+        selected_interval_days:
+          type: integer
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        timezone:
+          type: string
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+    PlatformEnum:
+      enum:
+      - ios
+      - android
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+    PreferredChannelEnum:
+      enum:
+      - email
+      - phone
+      - whatsapp
+      - telegram
+      - messenger
+      - other
+      type: string
+      description: |-
+        * `email` - Email
+        * `phone` - Phone
+        * `whatsapp` - WhatsApp
+        * `telegram` - Telegram
+        * `messenger` - Messenger
+        * `other` - Other
+    PurposeEnum:
+      enum:
+      - check_in
+      - birthday
+      - congratulations
+      - gratitude
+      - reconnect
+      - custom
+      type: string
+      description: |-
+        * `check_in` - Check-in
+        * `birthday` - Birthday
+        * `congratulations` - Congratulations
+        * `gratitude` - Gratitude
+        * `reconnect` - Reconnect
+        * `custom` - Custom
+    Register:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        name:
+          type: string
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 10
+        timezone:
+          type: string
+          default: UTC
+      required:
+      - email
+      - id
+      - name
+      - password
+    RelationshipEnum:
+      enum:
+      - friend
+      - family
+      - colleague
+      - mentor
+      - other
+      type: string
+      description: |-
+        * `friend` - Friend
+        * `family` - Family
+        * `colleague` - Colleague
+        * `mentor` - Mentor
+        * `other` - Other
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        contact:
+          type: string
+          format: uuid
+          readOnly: true
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        interval_min_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        interval_max_days:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        next_due_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ScheduleStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - contact
+      - created_at
+      - id
+      - interval_max_days
+      - interval_min_days
+      - mode
+      - next_due_at
+      - updated_at
+    ScheduleStatusEnum:
+      enum:
+      - active
+      - paused
+      type: string
+      description: |-
+        * `active` - Active
+        * `paused` - Paused
+    SecurityEnum:
+      enum:
+      - tls
+      - ssl
+      - none
+      type: string
+      description: |-
+        * `tls` - TLS
+        * `ssl` - SSL
+        * `none` - None
+    SendUnitEnum:
+      enum:
+      - minutes
+      - hours
+      - days
+      type: string
+      description: |-
+        * `minutes` - minutes
+        * `hours` - hours
+        * `days` - days
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+      required:
+      - id
+      - name
+    ToneEnum:
+      enum:
+      - casual
+      - friendly
+      - warm
+      - professional
+      - custom
+      type: string
+      description: |-
+        * `casual` - Casual
+        * `friendly` - Friendly
+        * `warm` - Warm
+        * `professional` - Professional
+        * `custom` - Custom
+    Touchpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        schedule:
+          type: string
+          format: uuid
+          readOnly: true
+        contact_id:
+          type: string
+          format: uuid
+          readOnly: true
+        due_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/TouchpointStatusEnum'
+        reasons:
+          type: string
+          readOnly: true
+        selected_interval_days:
+          type: integer
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - completed_at
+      - contact_id
+      - created_at
+      - due_at
+      - id
+      - reasons
+      - schedule
+      - selected_interval_days
+      - updated_at
+    TouchpointStatusEnum:
+      enum:
+      - upcoming
+      - overdue
+      - snoozed
+      - completed
+      - skipped
+      - cancelled
+      type: string
+      description: |-
+        * `upcoming` - Upcoming
+        * `overdue` - Overdue
+        * `snoozed` - Snoozed
+        * `completed` - Completed
+        * `skipped` - Skipped
+        * `cancelled` - Cancelled
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        timezone:
+          type: string
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - id
+      - name
+      - timezone
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Use an access JWT as a Bearer token, or authenticate with the HttpOnly
+        pocketcrm_access cookie and X-CSRFToken on unsafe requests.
