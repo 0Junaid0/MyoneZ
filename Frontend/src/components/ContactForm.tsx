@@ -310,19 +310,14 @@ export default function ContactForm({
 
           {/* Reach */}
           <Section title="How to reach them" subtitle="Add at least one">
-            <View style={styles.phoneRow}>
-              <View style={styles.dial}>
-                <Text style={styles.dialText}>+880</Text>
-              </View>
-              <View style={styles.flex}>
-                <InputField
-                  label="Phone"
-                  value={values.phone}
-                  onChangeText={(t: string) => set('phone', t)}
-                  keyboardType="phone-pad"
-                />
-              </View>
-            </View>
+            {/* Full number with country code, e.g. +8801712000000 (no fixed +880 box) */}
+            <InputField
+              label="Phone"
+              value={values.phone}
+              onChangeText={(t: string) => set('phone', t)}
+              placeholder="+8801712000000"
+              keyboardType="phone-pad"
+            />
             <ToggleSwitch
               label="WhatsApp on the same number"
               description="Turn off to add a different one"
@@ -334,6 +329,7 @@ export default function ContactForm({
                 label="WhatsApp number"
                 value={values.whatsapp}
                 onChangeText={(t: string) => set('whatsapp', t)}
+                placeholder="+8801712000000"
                 keyboardType="phone-pad"
               />
             )}
@@ -546,18 +542,6 @@ const styles = StyleSheet.create({
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chipsRow: { gap: spacing.sm, paddingRight: spacing.lg },
-
-  phoneRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
-  dial: {
-    height: 48,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-    borderRadius: radius.input,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  dialText: { fontFamily: fonts.regular, fontSize: fontSize.md, color: colors.text },
 
   helpToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 32 },
   helpToggleText: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.primary },

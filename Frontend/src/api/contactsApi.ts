@@ -154,9 +154,9 @@ export function phoneToApi(raw: string): string {
   if (digits.startsWith('880')) return `+${digits}`;
   return `+880${digits.replace(/^0/, '')}`;
 }
+/** The form shows the full number with its country code, e.g. "+8801712000000" */
 export function phoneFromApi(e164: string): string {
-  if (!e164) return '';
-  return e164.startsWith('+880') ? e164.slice(4) : e164;
+  return e164 || '';
 }
 const prettyPhone = (e164: string) => (e164 ? e164.replace(/^(\+880)(\d+)/, '$1 $2') : undefined);
 
