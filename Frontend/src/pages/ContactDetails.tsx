@@ -304,14 +304,6 @@ export default function ContactDetails(): React.JSX.Element {
             <Text style={styles.healthSub}>
               Every {contact.intervalDays}{contact.jitterDays > 0 ? ` ± ${contact.jitterDays}` : ''} days · {contact.channel}
             </Text>
-            <View style={styles.healthLinks}>
-              <Pressable onPress={openTimeSheet} hitSlop={8} accessibilityRole="button">
-                <Text style={styles.healthLink}>Change time</Text>
-              </Pressable>
-              <Pressable onPress={openRhythmSheet} hitSlop={8} accessibilityRole="button">
-                <Text style={styles.healthLink}>Change rhythm</Text>
-              </Pressable>
-            </View>
           </View>
         </View>
 

@@ -25,6 +25,8 @@ import Toast, { useToast } from '../components/Toast';
 import { useExternalAppReturn } from '../hooks/useExternalAppReturn';
 import { OpenFailureReason, OpenResult, messengerUsername, openEmail, openMessenger, openSms, openTelegram, openWhatsApp } from '../utils/messaging';
 import ChannelSelector, { ChannelOption } from '../components/ChannelSelector';
+import UseAnotherMedium from '../components/UseAnotherMedium';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 
 type Props = NativeStackScreenProps<DraftsNavParams, 'WriteOwn'>;
 
@@ -50,6 +52,9 @@ export default function WriteOwn({ route, navigation }: Props): React.JSX.Elemen
     queryKey: ['messageOptions', contactId],
     queryFn: () => draftsApi.messageOptions(contactId),
   });
+
+  // Coming back from the contact's Edit page: reload, so newly added mediums show up in "Send via"
+  useRefreshOnFocus(() => refetch());
 
   // Starts on the contact's preferred channel, but the user can switch (same as the New message page)
   const [pickedChannel, setPickedChannel] = useState<Channel | null>(null);
@@ -278,6 +283,10 @@ export default function WriteOwn({ route, navigation }: Props): React.JSX.Elemen
               <ChannelSelector value={channel} onChange={setPickedChannel} options={channelOptions} />
             </>
           ) : null}
+          <UseAnotherMedium
+            available={options.channels}
+            onPress={() => navigation.navigate('EditContact', { id: contactId })}
+          />
 
           {createManual.isError ? <Text style={styles.error}>{getErrorMessage(createManual.error)}</Text> : null}
           {createAi.isError ? <Text style={styles.error}>{getErrorMessage(createAi.error, "Couldn't write a draft.")}</Text> : null}
@@ -376,4 +385,4 @@ const styles = StyleSheet.create({
   fromLine: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
   footerRow: { flexDirection: 'row', gap: spacing.md },
   blocked: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
-});
+});

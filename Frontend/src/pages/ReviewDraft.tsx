@@ -22,7 +22,9 @@ import Toast, { useToast } from '../components/Toast';
 import LengthSelector from '../components/LengthSelector';
 import ToneSelector, { DRAFT_TONE_OPTIONS } from '../components/ToneSelector';
 import TopicSheet from '../components/TopicSheet';
+import UseAnotherMedium from '../components/UseAnotherMedium';
 import { useExternalAppReturn } from '../hooks/useExternalAppReturn';
+import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useIsOffline } from '../hooks/useIsOffline';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
 import { Channel, DraftLength, ScheduleSelection, Tone } from '../types/draft';
@@ -53,6 +55,9 @@ export default function ReviewDraft({ route, navigation }: Props): React.JSX.Ele
     // The AI draft is written by a background job: poll until it is ready
     refetchInterval: (query) => (query.state.data?.generation === 'pending' ? 1500 : false),
   });
+
+  // Coming back from the contact's Edit page: reload, so newly added mediums show up in "Send via"
+  useRefreshOnFocus(() => refetch());
 
   const [body, setBody] = useState('');
   const [tone, setTone] = useState<Tone>('warm');
@@ -345,7 +350,7 @@ export default function ReviewDraft({ route, navigation }: Props): React.JSX.Ele
       right={
         draft ? (
           <Pressable onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityRole="button" accessibilityLabel="More options">
-            <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
           </Pressable>
         ) : undefined
       }
@@ -517,6 +522,10 @@ export default function ReviewDraft({ route, navigation }: Props): React.JSX.Ele
               <ChannelSelector value={channel} onChange={setChannel} options={channelOptions} />
             </>
           ) : null}
+          <UseAnotherMedium
+            available={draft.contactChannels}
+            onPress={() => navigation.navigate('EditContact', { id: draft.contactId })}
+          />
         </ScrollView>
 
         <View style={styles.footer}>

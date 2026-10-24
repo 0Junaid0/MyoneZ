@@ -38,6 +38,8 @@ export interface DraftsApi {
   composeDraft(contactId: string, input: ComposeDraftInput): Promise<{ id: string }>;
   /** "Delete": removes the draft */
   remove(id: string): Promise<void>;
+  /** Sent tab -> Reschedule: copies a message (text, tone, length, channel) into a new draft */
+  duplicate(id: string): Promise<{ id: string }>;
   /** Same as markSent (the phone opens the other app itself) */
   send(id: string): Promise<SentResult>;
   /** After WhatsApp / SMS, when the user taps "Yes, mark as sent" */

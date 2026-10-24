@@ -153,6 +153,21 @@ export const realDraftsApi: DraftsApi = {
     await apiClient.delete(`/messages/${id}/`);
   },
 
+  async duplicate(id) {
+    const m = await getMessage(id);
+    const body: Record<string, unknown> = {
+      contact: m.contact,
+      purpose: m.purpose,
+      tone: m.tone,
+      length: m.length,
+      body: m.body,
+      custom_instruction: m.custom_instruction,
+    };
+    if (m.channel) body.channel = m.channel;
+    const res = await apiClient.post<ApiMessage>('/messages/', body);
+    return { id: res.data.id };
+  },
+
   async composeDraft(contactId, input: ComposeDraftInput) {
     const res = await apiClient.post<ApiMessage>('/messages/generate/', {
       contact: contactId,

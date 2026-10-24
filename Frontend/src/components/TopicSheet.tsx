@@ -100,7 +100,8 @@ export default function TopicSheet({ visible, contactId, contactName, onClose, c
       return;
     }
     if (!memories.data) return;
-    setChosen(Object.fromEntries(memories.data.map((item) => [item.id, item.selected])));
+    // Every time the sheet opens, nothing is selected: the user picks the memories to include
+    setChosen(Object.fromEntries(memories.data.map((item) => [item.id, false])));
   }, [visible, memories.data]);
 
   const create = useMutation({

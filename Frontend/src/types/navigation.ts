@@ -30,6 +30,8 @@ export type DraftsNavParams = {
     openSchedule?: boolean;
   };
   WriteOwn: { contactId: string; contactName: string };
+  /** "Use another medium" opens the contact's Edit page */
+  EditContact: { id: string };
   Sent: SentResult;
   /** Owned by Member 2 */
   ContactDetails: { contactId: string };

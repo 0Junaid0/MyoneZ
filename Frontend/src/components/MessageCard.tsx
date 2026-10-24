@@ -1,4 +1,5 @@
 // STEP: PHASE 2 · Page-step 1 · draft card on M07 Drafts and M09c Scheduled list
+import dayjs from 'dayjs';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,16 +51,19 @@ function Pill({ label, color }: { label: string; color: string }): React.JSX.Ele
 
 export default function MessageCard({ draft, onPress, actions = [], note, highlighted = false }: MessageCardProps): React.JSX.Element {
   const scheduled = draft.status === 'scheduled' && !!draft.scheduledAt;
+  const sent = draft.status === 'sent';
   const late = draft.daysLate > 0 ? ` · ${draft.daysLate} ${draft.daysLate === 1 ? 'day' : 'days'} late` : '';
   return (
     <View style={[styles.card, highlighted && styles.cardHighlighted]}>
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open message for ${draft.contactName}`}>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${sent ? 'sent ' : ''}message for ${draft.contactName}`}>
         <View style={styles.header}>
           <Avatar name={draft.contactName} imageUrl={draft.contactAvatarUrl} size={44} />
           <View style={styles.headerText}>
             <Text style={styles.name} numberOfLines={1}>{draft.contactName}</Text>
             {scheduled ? (
               <Text style={styles.when}>{describeWhen(draft.scheduledAt as string, draft.contactTimezone)}</Text>
+            ) : sent ? (
+              <Text style={styles.meta}>Sent · {dayjs(draft.updatedAt).format('D MMM YYYY, h:mm A')}</Text>
             ) : (
               <Text style={[styles.meta, draft.daysLate > 0 && { color: colors.low }]}>
                 {REASON_LABEL[draft.reason]}{late}
@@ -74,6 +78,11 @@ export default function MessageCard({ draft, onPress, actions = [], note, highli
         ) : (
           <Text style={styles.preview} numberOfLines={2}>{draft.body}</Text>
         )}
+        {sent ? (
+          <Text style={styles.meta}>
+            {REASON_LABEL[draft.reason]} · {draft.tone.charAt(0).toUpperCase() + draft.tone.slice(1)} · {draft.length.charAt(0).toUpperCase() + draft.length.slice(1)}
+          </Text>
+        ) : null}
         {draft.status === 'failed' && draft.failureReason ? <Text style={styles.failure}>{draft.failureReason}</Text> : null}
       </Pressable>
 

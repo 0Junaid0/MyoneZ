@@ -64,6 +64,14 @@ def _template_draft(context, purpose, tone, length, instruction):
     ending = (
         " Hope all is well!" if length == "short" else " I would love to hear how things are going."
     )
+    # The user's own direction ("Something else" / Custom instruction) is part of the message
+    direction = (instruction or "").strip()
+    # "Mention ..." notes come from the memory chips: those facts are already in `detail`
+    if direction and direction.lower() != "manual" and not direction.lower().startswith("mention "):
+        direction = direction[0].upper() + direction[1:]
+        if direction[-1] not in ".!?":
+            direction += "."
+        return f"Hi {name}, {direction}{detail}{ending}".strip()
     return f"Hi {name}, {purpose_text}{detail}{ending}".strip()
 
 
@@ -84,7 +92,10 @@ def generate_draft(contact, purpose, tone, length, instruction="", include_histo
     system = (
         "Draft a personal outreach message using only facts in the supplied context. "
         "Never invent events, interests, history, or personal details. If context is sparse, "
-        "write a natural generic message. Return only the message body."
+        "write a natural generic message. Return only the message body. "
+        "If 'instruction' is not empty it is the sender's own direction for this message: "
+        "follow it closely, build the message around it, and let it override the generic "
+        "purpose wording. Still honour the requested tone and length."
     )
     prompt = {
         "purpose": purpose,

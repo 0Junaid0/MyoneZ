@@ -15,6 +15,7 @@ import ErrorState from '../components/ErrorState';
 import LoadingState from '../components/LoadingState';
 import MessageCard, { MessageCardAction } from '../components/MessageCard';
 import ScheduleSheet from '../components/ScheduleSheet';
+import SentSheet from '../components/SentSheet';
 import SearchBar from '../components/SearchBar';
 import Toast, { useToast } from '../components/Toast';
 import { useIsOffline } from '../hooks/useIsOffline';
@@ -82,6 +83,9 @@ export default function Drafts(): React.JSX.Element {
   }, [requestedTab, route.params]);
   const [cancelTarget, setCancelTarget] = useState<Draft | null>(null);
   const [timeTarget, setTimeTarget] = useState<Draft | null>(null);
+  // Sent tab: the message being looked at, and the temporary copy being rescheduled
+  const [sentTarget, setSentTarget] = useState<Draft | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
@@ -151,10 +155,37 @@ export default function Drafts(): React.JSX.Element {
     onSuccess: (draft) => {
       showToast(`Scheduled for ${describeWhen(draft.scheduledAt ?? new Date(), draft.contactTimezone).toLowerCase()}`);
       setTimeTarget(null);
+      if (rescheduleId && draft.id === rescheduleId) {
+        setRescheduleId(null);
+        setActiveTab('scheduled');
+      }
       refreshDrafts();
     },
     onError: (e) => showToast(getErrorMessage(e), 'error'),
   });
+
+  // Reschedule a sent message: copy it into a new draft, then pick a new date and time for the copy
+  const rescheduleMutation = useMutation({
+    mutationFn: async (sent: Draft) => {
+      const { id } = await draftsApi.duplicate(sent.id);
+      return draftsApi.get(id);
+    },
+    onSuccess: (copy) => {
+      setSentTarget(null);
+      setRescheduleId(copy.id);
+      setTimeTarget(copy);
+    },
+    onError: (e) => showToast(getErrorMessage(e), 'error'),
+  });
+
+  // Closing the date picker without confirming: remove the unused copy
+  const closeTimeSheet = () => {
+    if (timeTarget && rescheduleId === timeTarget.id) {
+      void draftsApi.remove(rescheduleId).catch(() => undefined).finally(() => refreshDrafts());
+      setRescheduleId(null);
+    }
+    setTimeTarget(null);
+  };
 
   /** Blocks write actions while offline with a clear message. */
   const guardOnline = (action: () => void) => {
@@ -175,6 +206,9 @@ export default function Drafts(): React.JSX.Element {
         { label: 'Send now', disabled: locked, onPress: () => openReview(draft) },
         { label: 'Cancel', destructive: true, disabled: locked, onPress: () => guardOnline(() => setCancelTarget(draft)) },
       ];
+    }
+    if (draft.status === 'sent') {
+      return [{ label: 'Reschedule', onPress: () => guardOnline(() => rescheduleMutation.mutate(draft)) }];
     }
     if (draft.status === 'failed') {
       // Retry opens the review screen: the user presses Send again (WhatsApp/SMS need a tap anyway)
@@ -200,7 +234,7 @@ export default function Drafts(): React.JSX.Element {
         renderItem={({ item, index }) => (
           <MessageCard
             draft={item}
-            onPress={() => openReview(item)}
+            onPress={() => (item.status === 'sent' ? setSentTarget(item) : openReview(item))}
             actions={actionsFor(item)}
             note={noteFor(item)}
             highlighted={activeTab === 'scheduled' && index === 0}
@@ -278,10 +312,18 @@ export default function Drafts(): React.JSX.Element {
           initialChannel={timeTarget.channel}
           initialScheduledAt={timeTarget.scheduledAt}
           loading={scheduleMutation.isPending}
-          onClose={() => setTimeTarget(null)}
+          onClose={closeTimeSheet}
           onConfirm={(selection) => scheduleMutation.mutate({ id: timeTarget.id, selection })}
         />
       ) : null}
+
+      <SentSheet
+        draft={sentTarget}
+        visible={sentTarget !== null}
+        loading={rescheduleMutation.isPending}
+        onClose={() => setSentTarget(null)}
+        onReschedule={(d) => guardOnline(() => rescheduleMutation.mutate(d))}
+      />
 
       <Toast {...toastProps} />
     </SafeAreaView>

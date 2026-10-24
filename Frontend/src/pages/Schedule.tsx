@@ -16,7 +16,8 @@ import ErrorState from '../components/ErrorState';
 import EmptyState from '../components/EmptyState';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
 
-type Range = 7 | 14 | 30;
+/** 'later' = everything scheduled after the next 30 days (no upper limit) */
+type Range = 7 | 14 | 30 | 'later';
 type Kind = 'Check-in' | 'Follow-up' | 'Birthday' | 'Thank-you';
 type Channel = 'Telegram' | 'WhatsApp' | 'SMS' | 'Gmail' | 'Messenger';
 
@@ -37,12 +38,19 @@ export type ScheduleAction = {
   draftId?: string;
 };
 
-const RANGES: Range[] = [7, 14, 30];
-const LATER_TITLE: Record<Range, string> = {
+const RANGES: Range[] = [7, 14, 30, 'later'];
+const RANGE_LABEL = (r: Range): string => (r === 'later' ? '30+ days' : `${r} days`);
+const LATER_TITLE: Record<Exclude<Range, 'later'>, string> = {
   7: 'Later this week',
   14: 'Later in the next 2 weeks',
   30: 'Later this month',
 };
+/** Day count the calendar strip covers (the 30+ view has no strip) */
+const stripDays = (r: Range): number => (r === 'later' ? 0 : r);
+
+function fullDate(d: Date): string {
+  return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 function shortDate(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
@@ -93,10 +101,16 @@ export default function Schedule(): React.JSX.Element {
     return () => clearInterval(id);
   }, [load]);
 
-  const days = useMemo(() => Array.from({ length: range }, (_, i) => addDays(today, i)), [today, range]);
+  const days = useMemo(() => Array.from({ length: stripDays(range) }, (_, i) => addDays(today, i)), [today, range]);
+
+  // 30+ days: every scheduled item after the next 30 days, oldest first, no upper limit
+  const beyond = useMemo(() => {
+    const from = addDays(today, 30);
+    return actions.filter((a) => a.status !== 'overdue' && a.date >= from).sort(byDateThenHour);
+  }, [actions, today]);
 
   const { overdue, selectedItems, later, markers } = useMemo(() => {
-    const end = addDays(today, range - 1);
+    const end = addDays(today, stripDays(range) - 1);
     const overdueList = actions.filter((a) => a.status === 'overdue').sort(byDateThenHour);
     const upcoming = actions
       .filter((a) => a.status !== 'overdue' && a.date >= today && a.date <= end)
@@ -119,12 +133,12 @@ export default function Schedule(): React.JSX.Element {
   // Selected day may fall outside a shorter range after switching: snap back to today.
   const changeRange = (r: Range): void => {
     setRange(r);
-    if (selected > addDays(today, r - 1)) setSelected(today);
+    if (r !== 'later' && selected > addDays(today, r - 1)) setSelected(today);
   };
 
   const openAction = (a: ScheduleAction): void => {
-    if (a.status === 'scheduled') navigation.navigate('ContactDetails', { id: a.contactId });
-    else if (a.draftId) navigation.navigate('ReviewDraft', { draftId: a.draftId, mode: 'review' });
+    // A message exists (scheduled, ready or overdue): open it. Only a bare check-in date opens the profile.
+    if (a.draftId) navigation.navigate('ReviewDraft', { draftId: a.draftId, mode: 'review' });
     else navigation.navigate('ContactDetails', { id: a.contactId });
   };
 
@@ -137,6 +151,33 @@ export default function Schedule(): React.JSX.Element {
     if (error) return <ErrorState message={error} onRetry={() => void load()} />;
     if (actions.length === 0) {
       return <EmptyState title="Nothing scheduled" message="Check-ins will show up here as they come due." />;
+    }
+
+    if (range === 'later') {
+      return (
+        <View style={styles.group}>
+          <Text style={styles.sectionLabel}>After the next 30 days</Text>
+          <View style={styles.card}>
+            {beyond.length === 0 ? (
+              <Text style={styles.empty}>Nothing scheduled beyond 30 days.</Text>
+            ) : (
+              beyond.map((a, i) => (
+                <View key={a.id}>
+                  {i > 0 && <View style={styles.divider} />}
+                  <ScheduleItem
+                    name={a.contactName}
+                    subtitle={`${subtitleOf(a)} · ${fullDate(a.date)}${a.time ? ` · ${a.time}` : ''}`}
+                    imageUri={a.avatarUrl}
+                    leading={{ type: 'avatar' }}
+                    trailing={{ type: 'chevron' }}
+                    onPress={() => openAction(a)}
+                  />
+                </View>
+              ))
+            )}
+          </View>
+        </View>
+      );
     }
 
     return (
@@ -191,7 +232,7 @@ export default function Schedule(): React.JSX.Element {
 
         {later.length > 0 && (
           <View style={styles.group}>
-            <Text style={styles.sectionLabel}>{LATER_TITLE[range]}</Text>
+            <Text style={styles.sectionLabel}>{LATER_TITLE[range as Exclude<Range, 'later'>]}</Text>
             <View style={styles.card}>
               {later.map((a, i) => (
                 <View key={a.id}>
@@ -227,12 +268,14 @@ export default function Schedule(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityState={{ selected: range === r }}
             >
-              <Text style={[styles.segText, range === r && styles.segTextActive]}>{r} days</Text>
+              <Text style={[styles.segText, range === r && styles.segTextActive]}>{RANGE_LABEL(r)}</Text>
             </Pressable>
           ))}
         </View>
 
-        <CalendarStrip days={days} selected={selected} today={today} markers={markers} onSelect={setSelected} />
+        {range !== 'later' && (
+          <CalendarStrip days={days} selected={selected} today={today} markers={markers} onSelect={setSelected} />
+        )}
 
         {renderBody()}
       </ScrollView>

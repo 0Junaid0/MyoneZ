@@ -9,6 +9,7 @@ import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { contactsApi } from '../api/contactsApi';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import ContactCard from '../components/ContactCard';
+import TopicSheet from '../components/TopicSheet';
 import type { ContactSummary, Relationship } from '../components/ContactCard';
 import SearchBar from '../components/SearchBar';
 import FilterChip from '../components/FilterChip';
@@ -47,6 +48,9 @@ export default function Contacts(): React.JSX.Element {
   const [query, setQuery] = useState<string>('');
   const [filter, setFilter] = useState<Filter>('All');
   const [sort, setSort] = useState<SortKey>('health-asc');
+  // Tap on a card (not the avatar) opens the Message sheet for that contact
+  const [messageTarget, setMessageTarget] = useState<ContactSummary | null>(null);
+  const [messageOpen, setMessageOpen] = useState<boolean>(false);
 
   // silent: refresh in the background without the full-screen spinner (coming back to the tab)
   const load = useCallback(async (silent = false) => {
@@ -110,8 +114,15 @@ export default function Contacts(): React.JSX.Element {
     setSort(SORTS[(idx + 1) % SORTS.length].key);
   };
 
+  // Avatar -> profile
   const openContact = (c: ContactSummary): void => {
     navigation.navigate('ContactDetails', { id: c.id });
+  };
+
+  // Rest of the card -> message
+  const openMessage = (c: ContactSummary): void => {
+    setMessageTarget(c);
+    setMessageOpen(true);
   };
 
   const renderList = (): React.JSX.Element => {
@@ -134,7 +145,7 @@ export default function Contacts(): React.JSX.Element {
         {visible.map((c, i) => (
           <View key={c.id}>
             {i > 0 && <View style={styles.divider} />}
-            <ContactCard contact={c} onPress={openContact} />
+            <ContactCard contact={c} onPress={openMessage} onAvatarPress={openContact} />
           </View>
         ))}
       </View>
@@ -190,6 +201,15 @@ export default function Contacts(): React.JSX.Element {
 
         {renderList()}
       </ScrollView>
+
+      {messageTarget ? (
+        <TopicSheet
+          visible={messageOpen}
+          contactId={messageTarget.id}
+          contactName={messageTarget.name}
+          onClose={() => setMessageOpen(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

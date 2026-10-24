@@ -205,6 +205,15 @@ export const draftsMockApi: DraftsApi = {
     readyAt.set(id, Date.now() + 1800);
     return { id };
   },
+  async duplicate(id) {
+    await delay(300);
+    const source = store.find((d) => d.id === id);
+    if (!source) throw new Error('Draft not found');
+    counter += 1;
+    const newId = `d${counter}`;
+    store = [{ ...source, id: newId, status: 'pending_review', scheduledAt: undefined, daysLate: 0, updatedAt: nowIso() }, ...store];
+    return { id: newId };
+  },
   async remove(id) {
     await delay(200);
     store = store.filter((d) => d.id !== id);

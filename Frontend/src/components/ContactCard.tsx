@@ -1,5 +1,6 @@
 // components/ContactCard.tsx  (Owner: Member 2)
-// Usage: <ContactCard contact={c} onPress={() => navigation.navigate('ContactDetails', { id: c.id })} />
+// Usage: <ContactCard contact={c} onPress={openMessage} onAvatarPress={openProfile} />
+// Tap the avatar -> profile. Tap anywhere else on the card (name included) -> message.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Avatar from './Avatar';
@@ -24,18 +25,27 @@ export type ContactSummary = {
 
 export type ContactCardProps = {
   contact: ContactSummary;
+  /** Tap anywhere on the card except the avatar (opens Message) */
   onPress: (contact: ContactSummary) => void;
+  /** Tap on the profile picture only (opens the profile) */
+  onAvatarPress: (contact: ContactSummary) => void;
 };
 
-export default function ContactCard({ contact, onPress }: ContactCardProps): React.JSX.Element {
+export default function ContactCard({ contact, onPress, onAvatarPress }: ContactCardProps): React.JSX.Element {
   return (
     <Pressable
       onPress={() => onPress(contact)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`${contact.name}, ${contact.relationship}`}
+      accessibilityLabel={`Message ${contact.name}, ${contact.relationship}`}
     >
-      <Avatar name={contact.name} size={48} imageUri={contact.imageUri} />
+      <Pressable
+        onPress={() => onAvatarPress(contact)}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${contact.name}'s profile`}
+      >
+        <Avatar name={contact.name} size={48} imageUri={contact.imageUri} />
+      </Pressable>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
           {contact.name}
