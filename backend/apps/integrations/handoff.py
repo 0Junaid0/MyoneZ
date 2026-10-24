@@ -5,12 +5,13 @@ import phonenumbers
 
 from .whatsapp import build_handoff_url
 
-SEND_CHANNELS = ("whatsapp", "email", "telegram", "messenger")
+SEND_CHANNELS = ("whatsapp", "email", "telegram", "messenger", "phone")
 CHANNEL_LABELS = {
     "whatsapp": "WhatsApp",
     "email": "Gmail",
     "telegram": "Telegram",
     "messenger": "Messenger",
+    "phone": "SMS",
 }
 _MESSENGER_NAME = re.compile(r"^[A-Za-z0-9.]{3,50}$")
 
@@ -61,6 +62,20 @@ def build_send_sheet(channel, contact, body, subject="Catching up!"):
             link_prefilled=True,
             hint="Opens your mail with the recipient and message filled in. You tap Send.",
         )
+    if channel == "phone":
+        if not contact.phone:
+            raise ValueError("Add a phone number before sending by SMS.")
+        number = _sms_number(contact.phone)
+        return _sheet(
+            channel,
+            contact,
+            body,
+            recipient=number,
+            deep_link=f"sms:{number}?body={quote(body)}",
+            provider="sms_handoff",
+            link_prefilled=True,
+            hint="Opens your SMS app with this message filled in. You only need to tap Send.",
+        )
     if channel == "messenger":
         username = _messenger_username(contact.messenger)
         return _sheet(
@@ -76,7 +91,7 @@ def build_send_sheet(channel, contact, body, subject="Catching up!"):
                 "Messenger cannot carry the text in the link."
             ),
         )
-    raise ValueError("Choose WhatsApp, Telegram, Gmail, or Messenger.")
+    raise ValueError("Choose WhatsApp, Telegram, Gmail, Messenger, or SMS.")
 
 
 def _sheet(
@@ -97,7 +112,23 @@ def _sheet(
     }
 
 
+def _sms_number(phone):
+    try:
+        parsed = phonenumbers.parse(phone, None)
+    except phonenumbers.NumberParseException as exc:
+        raise ValueError("SMS number must include a valid country code.") from exc
+    if not phonenumbers.is_valid_number(parsed):
+        raise ValueError("Invalid SMS number.")
+    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+
+
+_TELEGRAM_USERNAME = re.compile(r"^@?[A-Za-z][A-Za-z0-9_]{4,31}$")
+
+
 def _telegram_link(phone, body):
+    handle = (phone or "").strip()
+    if _TELEGRAM_USERNAME.fullmatch(handle):
+        return f"https://t.me/{handle.lstrip('@')}?text={quote(body)}"
     try:
         parsed = phonenumbers.parse(phone, None)
     except phonenumbers.NumberParseException as exc:
@@ -108,18 +139,23 @@ def _telegram_link(phone, body):
     return f"https://t.me/+{digits}?text={quote(body)}"
 
 
+_PROFILE_ID = re.compile(r"profile\.php\?(?:.*&)?id=(\d{5,20})", re.IGNORECASE)
+_MESSENGER_PREFIX = re.compile(
+    r"^(?:https?://)?(?:www\.|m\.|web\.|mobile\.)?"
+    r"(?:m\.me|messenger\.com/t|messenger\.com|facebook\.com/messages/t|facebook\.com|fb\.com|fb\.me)/",
+    re.IGNORECASE,
+)
+
+
 def _messenger_username(value):
+    """Username or number id from "rafiq.10", "@rafiq.10", m.me / messenger.com / facebook.com links
+    and facebook.com/profile.php?id=123 (same rules as Frontend/src/utils/messaging.ts)."""
     handle = (value or "").strip()
-    for prefix in (
-        "https://m.me/",
-        "http://m.me/",
-        "https://www.messenger.com/t/",
-        "https://www.facebook.com/",
-        "https://facebook.com/",
-    ):
-        if handle.lower().startswith(prefix):
-            handle = handle[len(prefix) :]
-    handle = handle.strip("/").split("?")[0].lstrip("@")
-    if not _MESSENGER_NAME.fullmatch(handle):
+    match = _PROFILE_ID.search(handle)
+    if match:
+        return match.group(1)
+    handle = _MESSENGER_PREFIX.sub("", handle)
+    handle = re.split(r"[?#]", handle)[0].strip("/").lstrip("@")
+    if not _MESSENGER_NAME.fullmatch(handle) or handle.lower() == "profile.php":
         raise ValueError("Add the Messenger username, like rafiq.ahmed.10.")
     return handle

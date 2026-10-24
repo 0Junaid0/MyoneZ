@@ -10,3 +10,7 @@ staticfiles/
 .ruff_cache/
 .idea/
 .vscode/
+
+node_modules/
+.expo/
+Frontend/.env

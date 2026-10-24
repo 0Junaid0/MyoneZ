@@ -1,4 +1,5 @@
 from apps.accounts.views import (
+    DeviceView,
     EmailAccountView,
     LoginView,
     LogoutView,
@@ -55,6 +56,7 @@ api_patterns = [
     ),
     path("users/me/", MeView.as_view(), name="me"),
     path("users/me/email/", EmailAccountView.as_view(), name="email-account"),
+    path("devices/", DeviceView.as_view(), name="devices"),
     path("contacts/<uuid:contact_pk>/memories/", memory_list),
     path("contacts/<uuid:contact_pk>/memories/<uuid:pk>/", memory_detail),
     path("contacts/<uuid:contact_pk>/interactions/", interaction_list),

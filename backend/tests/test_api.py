@@ -490,9 +490,9 @@ def test_approved_message_waits_for_the_schedule_then_sends(client, contact):
     assert released.status_code == 200
     notice = released.data["results"][0]
     assert notice["message_id"] == str(message.id)
-    assert notice["route"] == f"/send/{message.id}"
-    assert notice["push"]["android"]["route"] == notice["route"]
-    assert notice["push"]["ios"]["route"] == notice["route"]
+    # the app opens Review draft when this push is tapped (useNotificationNavigation.ts)
+    assert notice["push"]["type"] == "reminder"
+    assert notice["push"]["draft_id"] == str(message.id)
     message.refresh_from_db()
     assert message.status == "queued"
     assert message.delivery_attempts.count() == 1
@@ -884,3 +884,20 @@ def test_end_to_end_relationship_workflow(client):
         ).count()
         == 1
     )
+
+
+def test_contact_accepts_own_tag_ids_and_rejects_other_users_tags(client, contact, user):
+    from apps.contacts.models import Tag
+
+    mine = Tag.objects.create(user=user, name="college")
+    other_user = User.objects.create_user(email="other@example.com", password="x-pass-12345")
+    theirs = Tag.objects.create(user=other_user, name="secret")
+
+    ok = client.patch(f"/api/v1/contacts/{contact.id}/", {"tag_ids": [str(mine.id)]}, format="json")
+    assert ok.status_code == 200, ok.data
+    assert [t["name"] for t in ok.data["tags"]] == ["college"]
+
+    bad = client.patch(
+        f"/api/v1/contacts/{contact.id}/", {"tag_ids": [str(theirs.id)]}, format="json"
+    )
+    assert bad.status_code == 400

@@ -68,7 +68,13 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if contact.status != Contact.Status.ACTIVE:
             raise serializers.ValidationError("Schedules require an active contact.")
         schedule = serializer.save(contact=contact)
-        create_next_touchpoint(schedule.id, idempotency_key=f"initial:{schedule.id}")
+        # The first check-in counts from the last time you talked (PRD M12: if that date has
+        # already passed, the check-in is due today), not from the moment the contact was saved.
+        create_next_touchpoint(
+            schedule.id,
+            base_at=contact.last_contacted_at,
+            idempotency_key=f"initial:{schedule.id}",
+        )
         schedule.refresh_from_db()
 
     def perform_update(self, serializer):

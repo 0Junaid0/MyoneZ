@@ -35,3 +35,8 @@ JWT_COOKIE_SECURE = False
 STORAGES["staticfiles"] = {  # noqa: F405
     "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
 }
+
+# Expo web (browser) calls the API from another origin (e.g. http://localhost:8081).
+# Phones do not need CORS. Development only.
+
+CORS_ALLOW_ALL_ORIGINS = True

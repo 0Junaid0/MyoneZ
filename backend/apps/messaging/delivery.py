@@ -9,6 +9,7 @@ from apps.integrations.handoff import CHANNEL_LABELS, SEND_CHANNELS, build_messa
 from apps.schedules.models import Schedule, Touchpoint
 
 from .models import DeliveryAttempt, Message, SendNotification
+from .push import push_data
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 def schedule_approval(message, channel, send_in=None, send_unit=None):
     channel = channel or message.channel or message.contact.preferred_channel
     if channel not in SEND_CHANNELS:
-        raise ValueError("Choose WhatsApp, Telegram, Gmail, or Messenger.")
+        raise ValueError("Choose WhatsApp, Telegram, Gmail, Messenger, or SMS.")
     touchpoint = message.touchpoint
     if touchpoint is None or touchpoint.status not in Touchpoint.ACTIVE_STATUSES:
         touchpoint = (
@@ -212,7 +213,6 @@ def notify_due_touchpoints(user=None):
 
 
 def notification_payload(note):
-    route = note.route
     if note.message_id:
         contact = note.message.contact
         channel = note.message.channel
@@ -233,11 +233,8 @@ def notification_payload(note):
         "body": note.body,
         "channel": channel,
         "contact_name": contact.name,
-        "route": route,
         "created_at": note.created_at.isoformat(),
         "opened_at": note.opened_at.isoformat() if note.opened_at else None,
-        "push": {
-            "android": {"channel_id": "messages", "click_action": "OPEN_ROUTE", "route": route},
-            "ios": {"category": "SEND_READY", "thread_id": str(contact.id), "route": route},
-        },
+        # exactly what the phone push carries (see push.py)
+        "push": push_data(note),
     }

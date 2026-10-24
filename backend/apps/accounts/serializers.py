@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.contrib.auth import authenticate, password_validation
 from rest_framework import serializers
 
-from .models import EmailAccount, User
+from .models import Device, EmailAccount, User
 
 
 def validate_timezone(value):
@@ -51,7 +51,7 @@ class LoginSerializer(serializers.Serializer):
             password=attrs["password"],
         )
         if not user or not user.is_active:
-            raise serializers.ValidationError("Invalid credentials.")
+            raise serializers.ValidationError("Email or password is wrong.")
         attrs["user"] = user
         return attrs
 
@@ -61,9 +61,35 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
-    uid = serializers.CharField()
-    token = serializers.CharField()
+    """Step 2 of reset: the 6-digit code from the email plus the new password (no web link)."""
+
+    challenge_id = serializers.UUIDField()
+    code = serializers.RegexField(r"^\d{6}$")
     new_password = serializers.CharField(min_length=10)
+
+
+class LogoutSerializer(serializers.Serializer):
+    """Mobile sends its refresh token (and push token) in the body; browsers use the cookie."""
+
+    refresh = serializers.CharField(required=False, allow_blank=True)
+    device_token = serializers.CharField(required=False, allow_blank=True)
+
+
+class DeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Device
+        fields = ["token", "platform"]
+        extra_kwargs = {"token": {"validators": []}}  # re-registering the same token updates it
+
+    def validate_token(self, value):
+        value = value.strip()
+        if not (value.startswith("ExponentPushToken[") or value.startswith("ExpoPushToken[")):
+            raise serializers.ValidationError("Not an Expo push token.")
+        return value
+
+
+class DeviceDeleteSerializer(serializers.Serializer):
+    token = serializers.CharField()
 
 
 class OtpVerifySerializer(serializers.Serializer):

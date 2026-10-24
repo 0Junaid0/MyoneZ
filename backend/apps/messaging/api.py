@@ -48,6 +48,8 @@ class MessageSerializer(serializers.ModelSerializer):
             "approved_at",
             "handoff_url",
             "delivery_attempts",
+            "contact_info",
+            "touchpoint_due_at",
             "created_at",
             "updated_at",
             "send_in",
@@ -66,12 +68,48 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
 
     handoff_url = serializers.SerializerMethodField()
+    contact_info = serializers.SerializerMethodField()
+    touchpoint_due_at = serializers.SerializerMethodField()
     send_in = serializers.IntegerField(
         min_value=1, max_value=36500, required=False, write_only=True
     )
     send_unit = serializers.ChoiceField(
         choices=["minutes", "hours", "days"], required=False, write_only=True
     )
+
+    def get_contact_info(self, obj):
+        contact = obj.contact
+        schedule = getattr(contact, "schedule", None)
+        interval = None
+        if schedule is not None:
+            interval = (schedule.interval_min_days + schedule.interval_max_days) / 2
+        channels = [
+            name
+            for name, value in (
+                ("whatsapp", contact.whatsapp),
+                ("telegram", contact.telegram),
+                ("phone", contact.phone),
+                ("email", contact.email),
+                ("messenger", contact.messenger),
+            )
+            if value
+        ]
+        return {
+            "id": str(contact.id),
+            "name": contact.name,
+            "phone": contact.phone,
+            "whatsapp": contact.whatsapp,
+            "telegram": contact.telegram,
+            "timezone": contact.timezone,
+            "preferred_channel": contact.preferred_channel,
+            "channels": channels,
+            "last_contacted_at": contact.last_contacted_at,
+            "created_at": contact.created_at,
+            "interval_days": interval,
+        }
+
+    def get_touchpoint_due_at(self, obj):
+        return obj.touchpoint.due_at if obj.touchpoint_id else None
 
     def get_handoff_url(self, obj):
         attempts = list(obj.delivery_attempts.all())
@@ -194,7 +232,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             return self.queryset
         return (
             Message.objects.filter(contact__user=self.request.user)
-            .select_related("contact", "touchpoint")
+            .select_related("contact", "contact__schedule", "touchpoint")
             .prefetch_related("delivery_attempts")
         )
 
@@ -318,7 +356,6 @@ class MessageViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError(str(exc)) from exc
         sheet.pop("provider", None)
         sheet["message_id"] = str(message.id)
-        sheet["route"] = f"/send/{message.id}"
         return Response(sheet)
 
     @action(detail=True, methods=["post"], url_path="mark-sent")

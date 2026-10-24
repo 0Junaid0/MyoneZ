@@ -40,6 +40,7 @@ class EmailOTP(models.Model):
     class Purpose(models.TextChoices):
         REGISTER = "register", "Register"
         LOGIN = "login", "Login"
+        RESET_PASSWORD = "reset_password", "Reset password"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField()
@@ -76,3 +77,21 @@ class EmailAccount(models.Model):
 
     def __str__(self):
         return self.from_email
+
+
+class Device(models.Model):
+    """A phone that receives push notifications (Expo push token from the mobile app)."""
+
+    class Platform(models.TextChoices):
+        IOS = "ios", "iOS"
+        ANDROID = "android", "Android"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=10, choices=Platform.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.platform}:{self.token[:24]}"

@@ -29,6 +29,7 @@ class ContactSerializer(serializers.ModelSerializer):
         source="tags", many=True, queryset=Tag.objects.none(), required=False
     )
     tags = TagSerializer(many=True, read_only=True)
+    schedule = serializers.SerializerMethodField()
 
     class Meta:
         model = Contact
@@ -48,16 +49,32 @@ class ContactSerializer(serializers.ModelSerializer):
             "preferred_channel",
             "status",
             "last_contacted_at",
+            "schedule",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "last_contacted_at", "created_at", "updated_at"]
 
+    def get_schedule(self, obj):
+        schedule = getattr(obj, "schedule", None)
+        if schedule is None:
+            return None
+        return {
+            "id": str(schedule.id),
+            "mode": schedule.mode,
+            "interval_min_days": schedule.interval_min_days,
+            "interval_max_days": schedule.interval_max_days,
+            "next_due_at": schedule.next_due_at,
+            "status": schedule.status,
+        }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            self.fields["tag_ids"].queryset = Tag.objects.filter(user=request.user)
+            # tag_ids is many=True: the real queryset lives on the child relation,
+            # setting it on the ManyRelatedField itself is ignored (every pk "does not exist")
+            self.fields["tag_ids"].child_relation.queryset = Tag.objects.filter(user=request.user)
 
     def validate_timezone(self, value):
         if value:
@@ -108,7 +125,11 @@ class ContactViewSet(OwnedViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return self.queryset
-        queryset = Contact.objects.filter(user=self.request.user).prefetch_related("tags")
+        queryset = (
+            Contact.objects.filter(user=self.request.user)
+            .select_related("schedule")
+            .prefetch_related("tags")
+        )
         activity = self.request.query_params.get("activity")
         if activity == "contacted":
             queryset = queryset.filter(last_contacted_at__isnull=False)

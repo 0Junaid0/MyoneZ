@@ -4,7 +4,7 @@ from rest_framework import serializers, viewsets
 
 from apps.contacts.models import Contact
 from apps.schedules.models import Touchpoint
-from apps.schedules.services import transition_touchpoint
+from apps.schedules.services import restart_after_contact, transition_touchpoint
 
 from .models import Interaction
 from .services import recompute_last_contacted
@@ -63,9 +63,12 @@ class InteractionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         contact = get_object_or_404(Contact, pk=self.kwargs["contact_pk"], user=self.request.user)
         interaction = serializer.save(contact=contact)
-        recompute_last_contacted(contact.id)
+        latest = recompute_last_contacted(contact.id)
         if interaction.touchpoint_id:
             transition_touchpoint(interaction.touchpoint_id, Touchpoint.Status.COMPLETED)
+        elif latest == interaction.occurred_at:
+            # the newest talk ("Log a talk", a sent message): the next check-in counts from it
+            restart_after_contact(contact.id, interaction.occurred_at, f"talk:{interaction.id}")
 
     def perform_update(self, serializer):
         interaction = serializer.save()

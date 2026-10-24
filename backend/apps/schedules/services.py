@@ -92,6 +92,29 @@ def transition_touchpoint(touchpoint_id, new_status, due_at=None):
 
 
 @transaction.atomic
+def restart_after_contact(contact_id, talked_at, idempotency_key):
+    """We talked (logged talk or sent message): close the open check-in, count the next from then.
+
+    PRD M11: "Log a talk updates last contact, next check-in and health right away", and any
+    sent message resets the rhythm.
+    """
+    schedule = (
+        Schedule.objects.select_for_update()
+        .filter(contact_id=contact_id, status=Schedule.Status.ACTIVE)
+        .first()
+    )
+    if schedule is None:
+        return None
+    now = timezone.now()
+    for point in schedule.touchpoints.filter(status__in=Touchpoint.ACTIVE_STATUSES):
+        point.status = Touchpoint.Status.COMPLETED
+        point.completed_at = now
+        point.save(update_fields=["status", "completed_at", "updated_at"])
+        _clear_touchpoint_notification(point.id)
+    return create_next_touchpoint(schedule.id, base_at=talked_at, idempotency_key=idempotency_key)
+
+
+@transaction.atomic
 def set_schedule_status(schedule_id, status):
     schedule = Schedule.objects.select_for_update().get(pk=schedule_id)
     schedule.status = status

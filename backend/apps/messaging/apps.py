@@ -9,6 +9,8 @@ class MessagingConfig(AppConfig):
     name = "apps.messaging"
 
     def ready(self):
+        from . import signals  # noqa: F401  (phone pushes for new notifications)
+
         if os.environ.get("RUN_MAIN") != "true" or "runserver" not in sys.argv:
             return
         from .scheduler import start_scheduler

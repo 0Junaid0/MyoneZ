@@ -2,6 +2,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from corsheaders.defaults import default_headers
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-development-key")
 DEBUG = False
@@ -140,3 +142,15 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@pocketcrm.local")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+
+# The frontend is a separate app (Frontend/). Browsers need CORS to call this API:
+# set CORS_ALLOWED_ORIGINS=https://app.example.com,https://other.example.com in production.
+# The mobile app sends "X-Client: mobile" and Authorization: Bearer <token> (no cookies).
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
+]
+CORS_ALLOW_HEADERS = [*default_headers, "x-client", "idempotency-key"]
+
+# Phone push notifications (Expo push service). The mobile app registers its token at /devices/.
+EXPO_PUSH_ENABLED = os.getenv("EXPO_PUSH_ENABLED", "true").lower() in {"1", "true", "yes"}
+EXPO_PUSH_URL = os.getenv("EXPO_PUSH_URL", "https://exp.host/--/api/v2/push/send")

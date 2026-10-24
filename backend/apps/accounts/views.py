@@ -1,26 +1,30 @@
 import hmac
+import uuid
 
 from django.conf import settings
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
 from django.db import transaction
 from django.middleware.csrf import get_token
 from django.utils import timezone
-from django.utils.encoding import force_bytes, force_str
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from apps.integrations.email import mail_connection_for
 
 from .authentication import enforce_csrf
-from .models import EmailAccount, EmailOTP, User
+from .models import Device, EmailAccount, EmailOTP, User
 from .otp import OTP_ATTEMPTS, hash_code, issue_otp, otp_payload
 from .serializers import (
+    DeviceDeleteSerializer,
+    DeviceSerializer,
     EmailAccountSerializer,
     EmptySerializer,
     LoginSerializer,
+    LogoutSerializer,
     OtpVerifySerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -31,6 +35,33 @@ from .serializers import (
 
 def hmac_matches(stored_hash, code):
     return hmac.compare_digest(hash_code(code), stored_hash)
+
+
+def _consume_challenge(challenge_id, code, purposes):
+    """Checks a 6-digit code. Returns (challenge, None) when it is right, else (None, Response).
+
+    Must run inside transaction.atomic(): the challenge row is locked while it is checked.
+    """
+    challenge = (
+        EmailOTP.objects.select_for_update()
+        .filter(pk=challenge_id, purpose__in=purposes)
+        .first()
+    )
+    if challenge is None or challenge.used_at is not None:
+        return None, Response({"detail": "Request a new code."}, status=400)
+    if challenge.expires_at <= timezone.now() or challenge.attempts >= OTP_ATTEMPTS:
+        challenge.used_at = timezone.now()
+        challenge.save(update_fields=["used_at"])
+        return None, Response({"detail": "That code expired. Request a new one."}, status=400)
+    if not hmac_matches(challenge.code_hash, code):
+        challenge.attempts += 1
+        if challenge.attempts >= OTP_ATTEMPTS:
+            challenge.used_at = timezone.now()
+        challenge.save(update_fields=["attempts", "used_at"])
+        return None, Response({"detail": "That code is incorrect."}, status=400)
+    challenge.used_at = timezone.now()
+    challenge.save(update_fields=["used_at"])
+    return challenge, None
 
 
 def _user_for_challenge(challenge):
@@ -51,8 +82,17 @@ def _user_for_challenge(challenge):
     return user
 
 
-def _set_tokens(response, user):
+def _is_mobile(request):
+    return request.headers.get("X-Client") == "mobile"
+
+
+def _set_tokens(response, user, body_tokens=False):
     refresh = RefreshToken.for_user(user)
+    if body_tokens:
+        # Mobile app: it cannot use HttpOnly cookies, so it also gets the tokens in the body.
+        data = dict(response.data) if response.data else {}
+        data.update(access=str(refresh.access_token), refresh=str(refresh))
+        response.data = data
     kwargs = {
         "httponly": True,
         "secure": settings.JWT_COOKIE_SECURE,
@@ -122,25 +162,14 @@ class VerifyOTPView(generics.GenericAPIView):
         serializer = OtpVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
-            challenge = (
-                EmailOTP.objects.select_for_update()
-                .filter(pk=serializer.validated_data["challenge_id"])
-                .first()
+            # a password-reset code can never be used to log in
+            challenge, error = _consume_challenge(
+                serializer.validated_data["challenge_id"],
+                serializer.validated_data["code"],
+                [EmailOTP.Purpose.LOGIN, EmailOTP.Purpose.REGISTER],
             )
-            if challenge is None or challenge.used_at is not None:
-                return Response({"detail": "Request a new code."}, status=400)
-            if challenge.expires_at <= timezone.now() or challenge.attempts >= OTP_ATTEMPTS:
-                challenge.used_at = timezone.now()
-                challenge.save(update_fields=["used_at"])
-                return Response({"detail": "That code expired. Request a new one."}, status=400)
-            if not hmac_matches(challenge.code_hash, serializer.validated_data["code"]):
-                challenge.attempts += 1
-                if challenge.attempts >= OTP_ATTEMPTS:
-                    challenge.used_at = timezone.now()
-                challenge.save(update_fields=["attempts", "used_at"])
-                return Response({"detail": "That code is incorrect."}, status=400)
-            challenge.used_at = timezone.now()
-            challenge.save(update_fields=["used_at"])
+            if error:
+                return error
             user = _user_for_challenge(challenge)
         if isinstance(user, Response):
             return user
@@ -149,6 +178,7 @@ class VerifyOTPView(generics.GenericAPIView):
         return _set_tokens(
             Response(UserSerializer(user).data, status=201 if created else 200),
             user,
+            body_tokens=_is_mobile(request),
         )
 
 
@@ -159,27 +189,42 @@ class RefreshView(generics.GenericAPIView):
     serializer_class = EmptySerializer
 
     def post(self, request):
-        enforce_csrf(request)
-        raw = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
+        mobile = _is_mobile(request)
+        if mobile:
+            # Mobile sends the refresh token in the body (no cookies, so no CSRF risk).
+            raw = request.data.get("refresh")
+        else:
+            enforce_csrf(request)
+            raw = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
         if not raw:
-            return Response({"detail": "Refresh cookie required."}, status=401)
+            return Response({"detail": "Refresh token required."}, status=401)
         try:
             old = RefreshToken(raw)
             user = User.objects.get(id=old["user_id"], is_active=True)
             old.blacklist()
         except (TokenError, User.DoesNotExist):
             return Response({"detail": "Invalid refresh token."}, status=401)
-        return _set_tokens(Response(status=204), user)
+        return _set_tokens(
+            Response(status=200 if mobile else 204), user, body_tokens=mobile
+        )
 
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     authentication_classes = []
-    serializer_class = EmptySerializer
+    serializer_class = LogoutSerializer
 
     def post(self, request):
-        enforce_csrf(request)
-        raw = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
+        if _is_mobile(request):
+            # Mobile keeps its tokens in SecureStore: it sends the refresh token in the body
+            # (no cookies, so no CSRF risk) and the phone's push token so pushes stop.
+            raw = request.data.get("refresh")
+            device_token = request.data.get("device_token")
+            if device_token:
+                Device.objects.filter(token=device_token).delete()
+        else:
+            enforce_csrf(request)
+            raw = request.COOKIES.get(settings.JWT_REFRESH_COOKIE)
         if raw:
             try:
                 RefreshToken(raw).blacklist()
@@ -259,19 +304,28 @@ class PasswordResetRequestView(generics.GenericAPIView):
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request):
+        """Step 1 of reset: emails a 6-digit code (the app has no web page for a link).
+
+        The answer looks the same whether or not the email has an account.
+        """
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = User.objects.filter(email__iexact=serializer.validated_data["email"]).first()
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
         if user:
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            send_mail(
-                "MyoneZ password reset",
-                f"Use uid={uid} and token={token} to reset your password.",
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-            )
-        return Response(status=204)
+            try:
+                challenge, code = issue_otp(
+                    email=user.email, purpose=EmailOTP.Purpose.RESET_PASSWORD, user=user
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            payload = otp_payload(challenge, code)
+        else:
+            payload = {"otp_required": True, "challenge_id": str(uuid.uuid4())}
+        payload["detail"] = (
+            f"If {email} has an account, we sent a 6-digit code to it. It expires in 10 minutes."
+        )
+        return Response(payload)
 
 
 class PasswordResetConfirmView(generics.GenericAPIView):
@@ -281,16 +335,47 @@ class PasswordResetConfirmView(generics.GenericAPIView):
     serializer_class = PasswordResetConfirmSerializer
 
     def post(self, request):
+        """Step 2 of reset: the emailed code + a new password. Signs out every other session."""
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            user = User.objects.get(
-                pk=force_str(urlsafe_base64_decode(serializer.validated_data["uid"]))
+        data = serializer.validated_data
+        with transaction.atomic():
+            challenge, error = _consume_challenge(
+                data["challenge_id"], data["code"], [EmailOTP.Purpose.RESET_PASSWORD]
             )
-        except (User.DoesNotExist, ValueError, TypeError):
-            return Response({"detail": "Invalid reset link."}, status=400)
-        if not default_token_generator.check_token(user, serializer.validated_data["token"]):
-            return Response({"detail": "Invalid reset link."}, status=400)
-        user.set_password(serializer.validated_data["new_password"])
-        user.save(update_fields=["password"])
+            if error:
+                return error
+            user = challenge.user
+            if user is None or not user.is_active:
+                return Response({"detail": "Request a new code."}, status=400)
+            try:
+                password_validation.validate_password(data["new_password"], user)
+            except DjangoValidationError as exc:
+                transaction.set_rollback(True)  # keep the code usable for a better password
+                return Response({"new_password": list(exc.messages)}, status=400)
+            user.set_password(data["new_password"])
+            user.save(update_fields=["password"])
+            for token in OutstandingToken.objects.filter(user=user):
+                BlacklistedToken.objects.get_or_create(token=token)
+        return Response(status=204)
+
+
+class DeviceView(generics.GenericAPIView):
+    """POST saves this phone's Expo push token for the signed-in user; DELETE removes it."""
+
+    serializer_class = DeviceSerializer
+
+    def post(self, request):
+        serializer = DeviceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        Device.objects.update_or_create(
+            token=serializer.validated_data["token"],
+            defaults={"user": request.user, "platform": serializer.validated_data["platform"]},
+        )
+        return Response(status=204)
+
+    def delete(self, request):
+        serializer = DeviceDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        Device.objects.filter(user=request.user, token=serializer.validated_data["token"]).delete()
         return Response(status=204)
