@@ -10,6 +10,7 @@
  */
 import axios from 'axios';
 import { apiClient, fetchAll } from './client';
+import { uploadPhoto } from './photo';
 import type { ContactSummary, Relationship } from '../components/ContactCard';
 import type { ContactFormValues } from '../components/ContactForm';
 import type { FrequencyValue } from '../components/FrequencySelector';
@@ -43,6 +44,7 @@ export interface ApiContact {
   birthday: string | null;
   timezone: string;
   preferred_channel: string;
+  photo: string | null;
   status: 'active' | 'paused' | 'archived';
   last_contacted_at: string | null;
   schedule: ApiSchedule | null;
@@ -112,6 +114,15 @@ const CAT_FROM_API: Record<string, MemoryCategory> = {
 };
 export const categoryToApi = (c: MemoryCategory) => CAT_TO_API[c] ?? 'other';
 export const categoryFromApi = (c: string): MemoryCategory => CAT_FROM_API[c] ?? 'values';
+
+function toMemory(memory: ApiMemory): Memory {
+  return {
+    id: memory.id,
+    category: categoryFromApi(memory.category),
+    text: memory.content,
+    selected: memory.allow_drafting,
+  };
+}
 
 const TONE_TO_API: Record<Tone, string> = {
   friendly: 'friendly',
@@ -194,6 +205,7 @@ export function toSummary(c: ApiContact): ContactSummary {
     daysSinceContact: days,
     healthScore: computeHealth(c.last_contacted_at ? days : days, intervalOf(c)),
     tags: c.tags.length ? c.tags.map((t) => t.name) : undefined,
+    imageUri: c.photo,
     // Only used by the search box (name, email or number)
     searchExtra: [c.email, c.phone, c.whatsapp, c.telegram, c.messenger].filter(Boolean).join(' '),
   };
@@ -269,7 +281,7 @@ export const contactsApi = {
         ? new Date(c.birthday).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
         : undefined,
       timezone: c.timezone ? timezoneFromApi(c.timezone) : undefined,
-      memories: memories.map((m) => ({ id: m.id, category: categoryFromApi(m.category), text: m.content })),
+      memories: memories.map(toMemory),
       history: interactions.map((i) => ({
         id: i.id,
         type: i.kind === 'message' ? 'message' : 'talk',
@@ -288,7 +300,7 @@ export const contactsApi = {
     const [first, ...rest] = c.name.split(' ');
     const whatsappSame = !c.whatsapp || c.whatsapp === c.phone;
     return {
-      photoUri: null,
+      photoUri: c.photo,
       firstName: first ?? '',
       lastName: rest.join(' '),
       relationship: relationshipFromApi(c.relationship),
@@ -327,6 +339,7 @@ export const contactsApi = {
     }
     await apiClient.post(`/contacts/${id}/schedules/`, { ...frequencyToApi(values.frequency), status: 'active' });
     if (values.memoryText.trim()) await contactsApi.addMemory(id, values.memoryText, values.memoryCategory);
+    if (values.photoUri) await uploadPhoto(`/contacts/${id}/`, values.photoUri);
     return { id };
   },
 
@@ -343,6 +356,11 @@ export const contactsApi = {
       await apiClient.post(`/contacts/${id}/schedules/`, { ...rhythm, status: 'active' });
     }
     if (values.memoryText.trim()) await contactsApi.addMemory(id, values.memoryText, values.memoryCategory);
+    if (values.photoUri) await uploadPhoto(`/contacts/${id}/`, values.photoUri);
+  },
+
+  async setPhoto(id: string, uri: string): Promise<string | null> {
+    return uploadPhoto(`/contacts/${id}/`, uri);
   },
 
   /** Touchpoint (next check-in) of a contact, if it has an active rhythm */
@@ -377,6 +395,15 @@ export const contactsApi = {
 
   async remove(id: string): Promise<void> {
     await apiClient.delete(`/contacts/${id}/`, { params: { permanent: 'true' } });
+  },
+
+  async listMemories(contactId: string): Promise<Memory[]> {
+    const memories = await fetchAll<ApiMemory>(`/contacts/${contactId}/memories/`);
+    return memories.map(toMemory);
+  },
+
+  async setMemorySelected(contactId: string, memoryId: string, selected: boolean): Promise<void> {
+    await apiClient.patch(`/contacts/${contactId}/memories/${memoryId}/`, { allow_drafting: selected });
   },
 
   async addMemory(contactId: string, text: string, category: MemoryCategory): Promise<void> {

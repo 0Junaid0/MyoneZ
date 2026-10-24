@@ -94,9 +94,14 @@ class MessageSerializer(serializers.ModelSerializer):
             )
             if value
         ]
+        photo = None
+        if contact.photo:
+            request = self.context.get("request")
+            photo = request.build_absolute_uri(contact.photo.url) if request else contact.photo.url
         return {
             "id": str(contact.id),
             "name": contact.name,
+            "photo": photo,
             "phone": contact.phone,
             "whatsapp": contact.whatsapp,
             "telegram": contact.telegram,

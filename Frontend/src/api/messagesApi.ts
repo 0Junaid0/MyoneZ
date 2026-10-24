@@ -19,6 +19,7 @@ import { computeHealth, daysSince } from '../utils/health';
 export interface ApiContactInfo {
   id: string;
   name: string;
+  photo?: string | null;
   phone: string;
   whatsapp: string;
   telegram: string;
@@ -89,6 +90,7 @@ export function toDraft(m: ApiMessage): Draft {
     id: m.id,
     contactId: info.id,
     contactName: info.name,
+    contactAvatarUrl: info.photo || undefined,
     contactPhone: info.phone || info.whatsapp || undefined,
     contactWhatsapp: info.whatsapp || info.phone || undefined,
     contactTelegram: info.telegram || undefined,

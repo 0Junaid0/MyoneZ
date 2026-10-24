@@ -24,6 +24,7 @@ export interface User {
   first_name: string;
   last_name: string;
   timezone?: string;
+  photo?: string | null;
 }
 
 /** Answer of POST /auth/login/ and /auth/register/: a 6-digit code was emailed */

@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 
+from apps.photos import profile_photo_path
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra):
@@ -23,6 +25,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=150)
+    photo = models.FileField(upload_to=profile_photo_path, blank=True)
     timezone = models.CharField(max_length=64, default="UTC")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

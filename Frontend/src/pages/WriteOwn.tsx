@@ -215,7 +215,7 @@ export default function WriteOwn({ route, navigation }: Props): React.JSX.Elemen
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.person}>
-            <Avatar name={contactName} size={40} />
+            <Avatar name={contactName} size={40} imageUri={options.photo} />
             <View style={styles.flex}>
               <Text style={styles.personName}>{contactName}</Text>
               <Text style={styles.personSub}>Your own words · no AI</Text>

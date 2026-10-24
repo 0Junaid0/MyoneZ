@@ -5,6 +5,8 @@ from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.photos import PhotoSerializerMixin
+
 from .models import Contact, Tag
 
 
@@ -24,7 +26,7 @@ class TagSerializer(serializers.ModelSerializer):
         return value.strip()
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(PhotoSerializerMixin, serializers.ModelSerializer):
     tag_ids = serializers.PrimaryKeyRelatedField(
         source="tags", many=True, queryset=Tag.objects.none(), required=False
     )
@@ -36,6 +38,7 @@ class ContactSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "photo",
             "email",
             "phone",
             "whatsapp",

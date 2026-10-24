@@ -1,3 +1,4 @@
+import base64
 import re
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -11,6 +12,7 @@ from apps.messaging.models import Message, SendNotification
 from apps.schedules.models import Schedule, Touchpoint
 from apps.schedules.services import create_next_touchpoint, transition_touchpoint
 from django.core import mail
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
@@ -52,7 +54,7 @@ def test_web_app_is_available():
     assert response.status_code == 200
     assert b"MyoneZ" in response.content
     assert b"/static/app.js" in response.content
-    assert b"Drafts and scheduled" in response.content
+    assert b"To review" in response.content
     assert b'data-view="drafts"' in response.content
 
 
@@ -901,3 +903,38 @@ def test_contact_accepts_own_tag_ids_and_rejects_other_users_tags(client, contac
         f"/api/v1/contacts/{contact.id}/", {"tag_ids": [str(theirs.id)]}, format="json"
     )
     assert bad.status_code == 400
+
+
+PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+def test_profile_and_contact_can_have_a_photo(client, contact, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    mine = client.patch(
+        "/api/v1/users/me/",
+        {"photo": SimpleUploadedFile("face.png", PNG, content_type="image/png")},
+        format="multipart",
+    )
+    assert mine.status_code == 200, mine.data
+    assert mine.data["photo"].endswith(".png")
+    assert "/media/profiles/" in mine.data["photo"]
+    assert client.get("/api/v1/users/me/").data["photo"] == mine.data["photo"]
+    user = User.objects.get(email="owner@example.com")
+    assert user.photo.storage.exists(user.photo.name)
+
+    person = client.patch(
+        f"/api/v1/contacts/{contact.id}/",
+        {"photo": SimpleUploadedFile("face.png", PNG, content_type="image/png")},
+        format="multipart",
+    )
+    assert person.status_code == 200, person.data
+    assert "/media/contacts/" in person.data["photo"]
+
+    rejected = client.patch(
+        "/api/v1/users/me/",
+        {"photo": SimpleUploadedFile("notes.txt", b"hello", content_type="text/plain")},
+        format="multipart",
+    )
+    assert rejected.status_code == 400

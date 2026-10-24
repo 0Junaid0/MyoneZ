@@ -10,6 +10,7 @@
  * ===============================================================
  */
 import { apiClient } from './client';
+import { uploadPhoto } from './photo';
 import type { OtpChallenge, SignupPayload, TokenPair, User } from '../types/api';
 import { authMockApi } from './mocks/authMock';
 
@@ -24,6 +25,7 @@ interface ApiUser {
   email: string;
   name: string;
   timezone?: string;
+  photo?: string | null;
 }
 
 export function toUser(u: ApiUser): User {
@@ -34,6 +36,7 @@ export function toUser(u: ApiUser): User {
     first_name: parts[0] ?? '',
     last_name: parts.slice(1).join(' '),
     timezone: u.timezone,
+    photo: u.photo ?? null,
   };
 }
 
@@ -56,6 +59,8 @@ export interface AuthApi {
   /** Revokes the refresh token on the server and stops pushes to this phone */
   logout(refresh: string | null, deviceToken: string | null): Promise<void>;
   me(): Promise<User>;
+  /** Saves a profile photo picked on this phone and returns the updated account */
+  updatePhoto(uri: string): Promise<User>;
 }
 
 const realAuthApi: AuthApi = {
@@ -106,6 +111,12 @@ const realAuthApi: AuthApi = {
   async me() {
     const res = await apiClient.get<ApiUser>('/users/me/');
     return toUser(res.data);
+  },
+
+  async updatePhoto(uri: string) {
+    const photo = await uploadPhoto('/users/me/', uri);
+    const current = await realAuthApi.me();
+    return { ...current, photo };
   },
 };
 

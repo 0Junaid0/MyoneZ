@@ -12,6 +12,8 @@ DATABASES = {
         "OPTIONS": {"timeout": 20},
     }
 }
+if _sqlite_path:
+    MEDIA_ROOT = Path(_sqlite_path).parent / "media"  # noqa: F405
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True

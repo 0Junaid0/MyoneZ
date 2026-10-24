@@ -1,7 +1,8 @@
 // pages/Settings.tsx  (Owner: Member 4)
 import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +22,8 @@ import ChannelSelector from '../components/ChannelSelector';
 import ConfirmDialog from '../components/ConfirmDialog';
 // Member 1's store
 import { useAuthStore } from '../store/auth';
+import { authApi } from '../api/authApi';
+import { getErrorMessage } from '../api/client';
 import { clearQueryCache } from '../api/queryClient';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
 
@@ -153,6 +156,22 @@ export default function Settings(): React.JSX.Element {
     setSheet(null);
   };
 
+  const pickAccountPhoto = async (): Promise<void> => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    try {
+      const next = await authApi.updatePhoto(result.assets[0].uri);
+      useAuthStore.setState({ user: next });
+    } catch (error) {
+      Alert.alert('Photo', getErrorMessage(error));
+    }
+  };
+
   const confirmLogout = async (): Promise<void> => {
     setLogoutOpen(false);
     await clearQueryCache(); // never leave one user's cached data for the next login
@@ -168,7 +187,12 @@ export default function Settings(): React.JSX.Element {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <AppHeader title="Settings" flush />
 
-        <ProfileCard name={fullName || 'Your name'} email={user?.email ?? ''} />
+        <ProfileCard
+          name={fullName || 'Your name'}
+          email={user?.email ?? ''}
+          imageUri={user?.photo}
+          onPress={() => void pickAccountPhoto()}
+        />
 
         <Text style={styles.sectionLabel}>How messages are sent</Text>
         <View style={styles.card}>

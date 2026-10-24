@@ -55,4 +55,10 @@ export const authMockApi: AuthApi = {
     await wait(150);
     return mockUser;
   },
+
+  async updatePhoto(uri: string) {
+    await wait(200);
+    mockUser = { ...mockUser, photo: uri };
+    return mockUser;
+  },
 };

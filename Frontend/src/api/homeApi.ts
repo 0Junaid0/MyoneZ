@@ -85,7 +85,7 @@ export const homeApi = {
           contact_id: c.id,
           draft_id: draft?.id ?? null,
           name: c.name,
-          avatar_url: null,
+          avatar_url: c.photo || null,
           relationship: relationshipFromApi(c.relationship),
           reason: 'Check-in',
           channel: channelFromApi(c.preferred_channel),

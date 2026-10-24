@@ -1,7 +1,7 @@
 // components/MemoryCard.tsx  (Owner: Member 2)
 // One memory row. Usage: <MemoryCard memory={m} />
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
 
@@ -11,6 +11,8 @@ export type Memory = {
   id: string;
   category: MemoryCategory;
   text: string;
+  /** Included when a draft is written. */
+  selected: boolean;
   /** Small pill next to the title, e.g. "Not thanked yet". */
   badge?: string;
 };
@@ -31,9 +33,10 @@ export const MEMORY_CATEGORIES: Record<MemoryCategory, CategoryStyle> = {
 
 export type MemoryCardProps = {
   memory: Memory;
+  onToggle?: (selected: boolean) => void;
 };
 
-export default function MemoryCard({ memory }: MemoryCardProps): React.JSX.Element {
+export default function MemoryCard({ memory, onToggle }: MemoryCardProps): React.JSX.Element {
   const cfg = MEMORY_CATEGORIES[memory.category] ?? MEMORY_CATEGORIES.values;
 
   return (
@@ -52,6 +55,18 @@ export default function MemoryCard({ memory }: MemoryCardProps): React.JSX.Eleme
         </View>
         <Text style={styles.text}>{memory.text}</Text>
       </View>
+      {onToggle ? (
+        <Pressable
+          onPress={() => onToggle(!memory.selected)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: memory.selected }}
+          accessibilityLabel={`Include ${memory.text} in drafts`}
+          hitSlop={8}
+          style={[styles.check, memory.selected && styles.checkOn]}
+        >
+          {memory.selected ? <Ionicons name="checkmark" size={16} color={colors.onDark} /> : null}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -76,4 +91,16 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontFamily: fonts.semibold, fontSize: fontSize.xs, color: '#92400E' },
   text: { fontFamily: fonts.regular, fontSize: fontSize.md, color: colors.text, marginTop: 2, lineHeight: 21 },
+  check: {
+    width: 24,
+    height: 24,
+    marginTop: 2,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.inputBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkOn: { borderColor: colors.primary, backgroundColor: colors.primary },
 });

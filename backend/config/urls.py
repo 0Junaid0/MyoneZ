@@ -16,10 +16,12 @@ from apps.interactions.api import InteractionViewSet
 from apps.memories.api import MemoryViewSet
 from apps.messaging.api import MessageViewSet, NotificationListView, NotificationOpenView
 from apps.schedules.api import ScheduleViewSet, TouchpointViewSet
+from django.conf import settings
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import TemplateView
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
@@ -41,6 +43,10 @@ schedule_list = ScheduleViewSet.as_view({"get": "list", "post": "create"})
 schedule_detail = ScheduleViewSet.as_view(
     {"get": "retrieve", "patch": "partial_update", "delete": "destroy"}
 )
+
+def serve_media(request, path):
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
+
 
 api_patterns = [
     path("auth/register/", RegisterView.as_view(), name="register"),
@@ -81,4 +87,5 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("api/v1/", include(api_patterns)),
+    path("media/<path:path>", serve_media),
 ]

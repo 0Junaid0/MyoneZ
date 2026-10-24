@@ -1,5 +1,6 @@
 // pages/ContactDetails.tsx  (Owner: Member 2)
 import { showAlert } from '../utils/alert';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -94,6 +95,22 @@ export default function ContactDetails(): React.JSX.Element {
   // Coming back from Edit, a draft or Sent: show the new name, health and history
   useRefreshOnFocus(() => load(true));
 
+  const pickContactPhoto = async (): Promise<void> => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    try {
+      const photo = await contactsApi.setPhoto(contactId, result.assets[0].uri);
+      setContact((current) => (current ? { ...current, imageUri: photo } : current));
+    } catch (e) {
+      showAlert('Photo', getErrorMessage(e));
+    }
+  };
+
   const logTalk = async (): Promise<void> => {
     try {
       await contactsApi.logTalk(contactId);
@@ -102,6 +119,22 @@ export default function ContactDetails(): React.JSX.Element {
     } catch (e) {
       showAlert('Could not log it', getErrorMessage(e));
     }
+  };
+
+  const toggleMemory = (memoryId: string, selected: boolean): void => {
+    setContact((current) =>
+      current
+        ? { ...current, memories: current.memories.map((item) => (item.id === memoryId ? { ...item, selected } : item)) }
+        : current,
+    );
+    void contactsApi.setMemorySelected(contactId, memoryId, selected).catch((e: unknown) => {
+      setContact((current) =>
+        current
+          ? { ...current, memories: current.memories.map((item) => (item.id === memoryId ? { ...item, selected: !selected } : item)) }
+          : current,
+      );
+      showAlert('Could not update', getErrorMessage(e));
+    });
   };
 
   const saveMemory = async (): Promise<void> => {
@@ -184,13 +217,16 @@ export default function ContactDetails(): React.JSX.Element {
         return <EmptyState title="No memories yet" message="Add something worth remembering." />;
       }
       return (
-        <View style={styles.card}>
-          {c.memories.map((m, i) => (
-            <View key={m.id}>
-              {i > 0 && <View style={styles.divider} />}
-              <MemoryCard memory={m} />
-            </View>
-          ))}
+        <View>
+          <Text style={styles.memoryHint}>Select any memories to include in a draft. More than one can be selected.</Text>
+          <View style={styles.card}>
+            {c.memories.map((m, i) => (
+              <View key={m.id}>
+                {i > 0 && <View style={styles.divider} />}
+                <MemoryCard memory={m} onToggle={(selected) => toggleMemory(m.id, selected)} />
+              </View>
+            ))}
+          </View>
         </View>
       );
     }
@@ -241,7 +277,10 @@ export default function ContactDetails(): React.JSX.Element {
     return (
       <>
         <View style={styles.profile}>
-          <Avatar name={contact.name} size={88} imageUri={contact.imageUri} />
+          <Pressable onPress={() => void pickContactPhoto()} accessibilityRole="button" accessibilityLabel="Add photo">
+            <Avatar name={contact.name} size={88} imageUri={contact.imageUri} />
+          </Pressable>
+          <Text style={styles.photoHint}>{contact.imageUri ? 'Change photo' : 'Add photo'}</Text>
           <Text style={styles.name}>{contact.name}</Text>
           <View style={styles.pills}>
             <View style={[styles.pill, { backgroundColor: colors.primarySoft }]}>
@@ -429,8 +468,10 @@ const styles = StyleSheet.create({
   topBtn: { flexDirection: 'row', alignItems: 'center' },
   topText: { fontFamily: fonts.medium, fontSize: fontSize.lg, color: colors.primary },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
+  memoryHint: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textMuted, marginBottom: spacing.sm, lineHeight: 18 },
 
   profile: { alignItems: 'center', gap: spacing.sm },
+  photoHint: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.primary },
   name: { fontFamily: fonts.bold, fontSize: fontSize.title, color: colors.text },
   pills: { flexDirection: 'row', gap: spacing.sm },
   pill: { borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },

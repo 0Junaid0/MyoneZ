@@ -72,6 +72,17 @@ function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
+function avatarMarkup(name, photo) {
+  if (photo) return `<span class="avatar"><img src="${escapeHTML(photo)}" alt=""></span>`;
+  return `<span class="avatar">${initials(name)}</span>`;
+}
+
+function paintAvatar(node, name, photo) {
+  if (!node) return;
+  if (photo) node.innerHTML = `<img src="${escapeHTML(photo)}" alt="">`;
+  else node.textContent = initials(name);
+}
+
 function initials(name = "?") {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
@@ -107,9 +118,9 @@ function showApp() {
   $("#app-shell").classList.remove("hidden");
   $("#user-name").textContent = state.user.name;
   $("#user-email").textContent = state.user.email;
-  $("#user-avatar").textContent = initials(state.user.name);
-  $("#page-title").textContent = `Good to see you, ${state.user.name.split(" ")[0]}`;
-  $("#today-label").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  paintAvatar($("#user-avatar"), state.user.name, state.user.photo);
+  paintAvatar($("#settings-avatar"), state.user.name, state.user.photo);
+  applyHeading("overview");
   startDueSending();
 }
 
@@ -142,26 +153,49 @@ async function loadData() {
   render();
 }
 
+function greeting() {
+  const hour = new Date().getHours();
+  const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const name = state.user?.name?.split(" ")[0] || "";
+  return name ? `${hello}, ${name}` : hello;
+}
+
+function applyHeading(name) {
+  const titles = { overview: greeting(), contacts: "Contacts", drafts: "Drafts", touchpoints: "Schedule", email: "Settings" };
+  $("#page-title").textContent = titles[name] || greeting();
+  $("#today-label").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
 function render() {
-  const a = state.analytics;
-  const stats = [
-    ["People in your circle", a.active_contacts],
-    ["Coming up", a.upcoming_touchpoints],
-    ["Needs attention", a.overdue_touchpoints],
-    ["Connected this month", a.contacted_last_30_days],
-  ];
-  $("#stats-grid").innerHTML = stats.map(([label, value]) =>
-    `<article class="stat"><span>${label}</span><strong>${value}</strong><i></i></article>`
-  ).join("");
-  $("#hero-copy").textContent = a.overdue_touchpoints
-    ? `${a.overdue_touchpoints} ${a.overdue_touchpoints === 1 ? "person needs" : "people need"} a little attention today.`
-    : "You're all caught up. A great moment to send an unexpected hello.";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const week = new Date(today);
+  week.setDate(week.getDate() + 7);
+  let dueToday = 0;
+  let overdue = 0;
+  let later = 0;
+  state.touchpoints.forEach((item) => {
+    const due = new Date(item.due_at);
+    if (item.status === "overdue" || due < today) overdue += 1;
+    else if (due < new Date(today.getTime() + 86400000)) dueToday += 1;
+    else if (due < week) later += 1;
+  });
+  const waiting = state.drafts.filter((item) => draftTabOf(item) === "review").length;
+  $("#stats-grid").innerHTML = [
+    ["Due today", dueToday],
+    ["Overdue", overdue],
+    ["Later this week", later],
+  ].map(([label, value]) => `<article class="stat"><span>${label}</span><strong>${value}</strong></article>`).join("");
+  $("#hero-drafts").textContent = waiting
+    ? `${waiting} ${waiting === 1 ? "draft is" : "drafts are"} waiting`
+    : "No drafts waiting";
+  $("#hero-copy").textContent = overdue
+    ? `${overdue} ${overdue === 1 ? "check-in is" : "check-ins are"} overdue.`
+    : "Nothing overdue.";
 
   $("#upcoming-list").innerHTML = state.touchpoints.slice(0, 4).map(touchpointRow).join("") ||
     `<div class="empty">No touchpoints yet. Add a schedule to someone.</div>`;
-  $("#recent-contacts").innerHTML = state.contacts.slice(0, 4).map(contactCard).join("") ||
-    `<div class="empty">Your circle is waiting.</div>`;
-  renderContacts(state.contacts);
+  renderContacts();
   $("#touchpoints-list").innerHTML = state.touchpoints.map((item) => {
     const contact = state.contacts.find((person) => person.id === item.contact_id);
     return `<article class="timeline-row">
@@ -269,25 +303,26 @@ function draftSection(title, items) {
   return `<section class="draft-section"><h3>${title} <span>${items.length}</span></h3><div class="timeline-list">${rows}</div></section>`;
 }
 
+function draftTabOf(item) {
+  if (item.status === "failed" || item.status === "cancelled") return "failed";
+  if (item.status === "sent" || item.status === "delivered") return "sent";
+  if (item.status === "approved" && item.scheduled_for && new Date(item.scheduled_for) > new Date()) return "scheduled";
+  return "review";
+}
+
 function renderDrafts() {
   const term = $("#draft-search")?.value || "";
+  const tab = document.querySelector(".draft-tab.active")?.dataset.draftTab || "review";
   const visible = state.drafts.filter((item) => {
+    if (draftTabOf(item) !== tab) return false;
     if (!term.trim()) return true;
     const person = state.contacts.find((contact) => contact.id === item.contact);
     return person ? personHaystack(person).includes(term.trim().toLowerCase()) : false;
   });
-  if (!state.drafts.length) {
-    $("#drafts-list").innerHTML = `<div class="empty">No drafts or scheduled messages yet. Generate a message and it stays here after you approve it.</div>`;
-    return;
-  }
-  const overdue = visible.filter((item) => messageBucket(item) === "overdue").sort((a, b) => messageTime(a) - messageTime(b));
-  const scheduled = visible.filter((item) => messageBucket(item) === "scheduled").sort((a, b) => messageTime(a) - messageTime(b));
-  const sent = visible.filter((item) => messageBucket(item) === "sent").sort((a, b) => messageTime(b) - messageTime(a));
-  $("#drafts-list").innerHTML = [
-    draftSection("Overdue", overdue),
-    draftSection("Scheduled", scheduled),
-    draftSection("Sent", sent),
-  ].join("");
+  const labels = { review: "to review", scheduled: "scheduled", sent: "sent", failed: "failed" };
+  $("#drafts-list").innerHTML = visible.length
+    ? `<div class="timeline-list">${visible.map(draftRow).join("")}</div>`
+    : `<div class="empty">Nothing ${labels[tab] || "here"}.</div>`;
 }
 
 function touchpointWhy(item) {
@@ -302,7 +337,7 @@ function touchpointRow(item) {
   const reasons = (item.reasons || []).map((text) => String(text).trim()).filter(Boolean);
   const detail = reasons.length ? `Why: ${reasons.join(", ")}` : (contact?.relationship || "relationship");
   return `<div class="list-item">
-    <span class="avatar">${initials(name)}</span>
+    ${avatarMarkup(name, contact?.photo)}
     <div><strong>${escapeHTML(name)}</strong><small>${escapeHTML(detail)}</small></div>
     <span class="date-chip">${friendlyDate(item.due_at)}</span>
   </div>`;
@@ -311,10 +346,9 @@ function touchpointRow(item) {
 function contactCard(person) {
   return `<article class="contact-card">
     <button data-contact="${person.id}">
-      <span class="avatar">${initials(person.name)}</span>
-      <h3>${escapeHTML(person.name)}</h3>
-      <p>${escapeHTML(person.relationship)}</p>
-      <footer><span>${escapeHTML(person.preferred_channel || "No channel")}</span><span>${friendlyDate(person.last_contacted_at)}</span></footer>
+      ${avatarMarkup(person.name, person.photo)}
+      <span class="contact-copy"><h3>${escapeHTML(person.name)}</h3><p>${escapeHTML(person.relationship)}</p></span>
+      <span class="date-chip">${friendlyDate(person.last_contacted_at)}</span>
     </button>
     <div class="card-actions">
       <button class="text-button" type="button" data-edit-contact="${person.id}">Edit</button>
@@ -343,6 +377,66 @@ function setDraftPerson(contactId) {
   const channel = person?.preferred_channel;
   if (channelLabels[channel]) $("#message-channel").value = channel;
   updateChannelHint();
+  updateDraftHeading();
+  loadDraftMemories(person ? person.id : "");
+}
+
+function updateDraftHeading() {
+  const person = state.contacts.find((item) => item.id === $("#draft-contact").value);
+  const name = person ? person.name.split(" ")[0] : "";
+  if (!$("#draft-title").dataset.editing) {
+    $("#draft-title").textContent = name ? `Message ${name}` : "Message";
+  }
+  $("#draft-subtitle").textContent = name
+    ? `What's it about? We'll write a draft from what you know about ${name}.`
+    : "What's it about? We'll write a draft from what you know.";
+}
+
+async function loadDraftMemories(contactId) {
+  const box = $("#draft-memories");
+  const button = $("#generate-message");
+  if (!contactId) {
+    box.innerHTML = "";
+    button.disabled = true;
+    return;
+  }
+  box.innerHTML = `<p class="hint">Loading memories…</p>`;
+  try {
+    const memories = await api(`/contacts/${contactId}/memories/`);
+    const items = memories.results || [];
+    if (!items.length) {
+      box.innerHTML = `<p class="hint">No memories yet. Add some on this person's page, or pick a topic below.</p>`;
+      button.disabled = true;
+      return;
+    }
+    box.innerHTML = `<p class="memory-label">Memories to include</p><p class="hint">Select any, then generate the message. More than one can be selected.</p><div class="memory-chips">${items.map((item) => `<button type="button" class="memory-chip${item.allow_drafting ? " on" : ""}" data-draft-memory="${item.id}" aria-pressed="${item.allow_drafting ? "true" : "false"}">${escapeHTML(item.content)}</button>`).join("")}</div>`;
+    button.disabled = !box.querySelector("[aria-pressed='true']");
+  } catch (error) {
+    box.innerHTML = `<p class="hint">${escapeHTML(error.message)}</p>`;
+    button.disabled = true;
+  }
+}
+
+async function syncDraftMemories() {
+  const contactId = $("#draft-contact").value;
+  const chips = [...$("#draft-memories").querySelectorAll("[data-draft-memory]")];
+  await Promise.all(chips.map((chip) => api(`/contacts/${contactId}/memories/${chip.dataset.draftMemory}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ allow_drafting: chip.getAttribute("aria-pressed") === "true" }),
+  })));
+}
+
+async function startDraft(reason, note = "") {
+  if (!$("#draft-contact").value) {
+    toast("Choose a person.");
+    renderPersonResults();
+    return;
+  }
+  const form = $("#draft-form");
+  form.elements.purpose.value = reason;
+  form.elements.custom_instruction.value = note;
+  await syncDraftMemories();
+  form.requestSubmit();
 }
 
 function renderPersonResults() {
@@ -361,7 +455,11 @@ function hidePersonResults() {
   $("#draft-contact-list").classList.add("hidden");
 }
 
-function renderContacts(contacts) {
+function renderContacts() {
+  const term = $("#contact-search")?.value || "";
+  const rel = document.querySelector("[data-rel].active")?.dataset.rel || "all";
+  let contacts = matchingPeople(term);
+  if (rel !== "all") contacts = contacts.filter((person) => (person.relationship || "").toLowerCase() === rel);
   $("#contacts-grid").innerHTML = contacts.map(contactCard).join("") ||
     `<div class="empty">No people found.</div>`;
 }
@@ -370,7 +468,8 @@ function switchView(name) {
   $$(".view").forEach((view) => view.classList.add("hidden"));
   $(`#${name}-view`).classList.remove("hidden");
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
-  $(".sidebar").classList.remove("open");
+  applyHeading(name);
+  $(".fab")?.classList.toggle("hidden", name === "drafts");
 }
 
 function localDateTimeValue(value) {
@@ -482,8 +581,14 @@ async function showContact(id) {
     const nextCheckIn = state.touchpoints.find((item) => item.contact_id === id);
     $("#contact-detail").innerHTML = `
       <header class="detail-header">
-        <span class="avatar">${initials(person.name)}</span>
-        <div><h2>${escapeHTML(person.name)}</h2><span class="muted">${escapeHTML(person.relationship)} · ${escapeHTML(person.email || person.whatsapp || "No contact details")}</span></div>
+        ${avatarMarkup(person.name, person.photo).replace('class="avatar"', 'class="avatar large"')}
+        <div>
+          <h2>${escapeHTML(person.name)}</h2>
+          <span class="muted">${escapeHTML(person.relationship)} · ${escapeHTML(person.email || person.whatsapp || "No contact details")}</span>
+          <label class="text-button photo-picker">${person.photo ? "Change photo" : "Add photo"}
+            <input type="file" accept="image/jpeg,image/png,image/webp" data-contact-photo="${id}">
+          </label>
+        </div>
       </header>
       <div class="detail-tabs">
         <section class="detail-block"><h4>Memories</h4>
@@ -520,10 +625,10 @@ function setAuthMode() {
   $("#auth-otp").required = false;
   $("#auth-email").required = true;
   $("#auth-password").required = true;
-  $("#auth-title").textContent = registerMode ? "Create your private space" : "Sign in to your space";
+  $("#auth-title").textContent = registerMode ? "Sign up" : "Log in";
   $("#auth-subtitle").textContent = registerMode ? "Start remembering the people who matter." : "Your relationships are private and always yours.";
-  $("#auth-submit-label").textContent = registerMode ? "Create account" : "Sign in";
-  $("#auth-switch").textContent = registerMode ? "Already have an account? Sign in" : "New here? Create an account";
+  $("#auth-submit-label").textContent = registerMode ? "Sign up" : "Log in";
+  $("#auth-switch").textContent = registerMode ? "Already have an account? Log in" : "Sign up";
   $("#auth-password").autocomplete = registerMode ? "new-password" : "current-password";
 }
 
@@ -608,7 +713,44 @@ $("#logout-button").addEventListener("click", async () => {
 });
 
 $("#add-contact-button").addEventListener("click", () => openContactForm());
+$("#user-photo").addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const body = new FormData();
+  body.append("photo", file);
+  try {
+    state.user = await api("/users/me/", { method: "PATCH", body });
+    paintAvatar($("#user-avatar"), state.user.name, state.user.photo);
+    paintAvatar($("#settings-avatar"), state.user.name, state.user.photo);
+    toast("Photo saved");
+  } catch (error) {
+    toast(error.message);
+  }
+  event.target.value = "";
+});
+document.addEventListener("change", async (event) => {
+  const input = event.target.closest?.("[data-contact-photo]");
+  const file = input?.files?.[0];
+  if (!file) return;
+  const body = new FormData();
+  body.append("photo", file);
+  try {
+    const saved = await api(`/contacts/${input.dataset.contactPhoto}/`, { method: "PATCH", body });
+    const person = state.contacts.find((item) => item.id === saved.id);
+    if (person) person.photo = saved.photo;
+    toast("Photo saved");
+    render();
+    await showContact(saved.id);
+  } catch (error) {
+    toast(error.message);
+  }
+});
 $("#draft-button").addEventListener("click", () => openDraft());
+$$("[data-open-draft]").forEach((button) => button.addEventListener("click", () => openDraft()));
+$$("[data-draft-tab]").forEach((button) => button.addEventListener("click", () => {
+  $$(".draft-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
+  renderDrafts();
+}));
 $("#mail-security").addEventListener("change", () => {
   const port = $("#mail-port");
   if ($("#mail-security").value === "ssl" && port.value === "587") port.value = "465";
@@ -631,20 +773,25 @@ $("#email-test").addEventListener("click", async () => {
     toast("Test email sent to your sending address");
   } catch (error) { toast(error.message); }
 });
-$("#menu-button").addEventListener("click", () => $(".sidebar").classList.toggle("open"));
 $$(".nav-item").forEach((item) => item.addEventListener("click", () => switchView(item.dataset.view)));
 $$("[data-go]").forEach((item) => item.addEventListener("click", () => switchView(item.dataset.go)));
 $$("[data-close]").forEach((item) => item.addEventListener("click", closeModal));
 $("#modal-backdrop").addEventListener("click", (event) => { if (event.target === event.currentTarget) closeModal(); });
 
-$("#contact-search").addEventListener("input", (event) => {
-  renderContacts(matchingPeople(event.target.value));
-});
+$("#contact-search").addEventListener("input", () => renderContacts());
+$$("[data-rel]").forEach((button) => button.addEventListener("click", () => {
+  $$("[data-rel]").forEach((chip) => chip.classList.toggle("active", chip === button));
+  renderContacts();
+}));
 $("#draft-search").addEventListener("input", renderDrafts);
 $("#draft-contact-search").addEventListener("focus", renderPersonResults);
 $("#draft-contact-search").addEventListener("input", () => {
   const person = state.contacts.find((item) => item.id === $("#draft-contact").value);
-  if (!person || person.name !== $("#draft-contact-search").value) $("#draft-contact").value = "";
+  if (!person || person.name !== $("#draft-contact-search").value) {
+    $("#draft-contact").value = "";
+    loadDraftMemories("");
+    updateDraftHeading();
+  }
   renderPersonResults();
 });
 
@@ -662,6 +809,7 @@ function openContactForm(person) {
       form.elements[field].value = person[field] || "";
     });
   }
+  paintAvatar($("#contact-photo-preview"), person?.name || "+", person?.photo);
   openModal("contact-modal");
 }
 
@@ -669,6 +817,8 @@ $("#contact-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
+  const photo = form.elements.photo.files[0];
+  delete data.photo;
   data.birthday = data.birthday || null;
   if (!editingContactId) {
     Object.keys(data).forEach((key) => { if (!data[key]) delete data[key]; });
@@ -676,7 +826,12 @@ $("#contact-form").addEventListener("submit", async (event) => {
   const path = editingContactId ? `/contacts/${editingContactId}/` : "/contacts/";
   const method = editingContactId ? "PATCH" : "POST";
   try {
-    await api(path, { method, body: JSON.stringify(data) });
+    const saved = await api(path, { method, body: JSON.stringify(data) });
+    if (photo) {
+      const body = new FormData();
+      body.append("photo", photo);
+      await api(`/contacts/${saved.id}/`, { method: "PATCH", body });
+    }
     form.reset();
     closeModal();
     toast(editingContactId ? "Contact updated" : "Person added to your circle");
@@ -966,8 +1121,10 @@ document.addEventListener("click", async (event) => {
 });
 
 function setDraftMode(editing) {
-  $("#draft-title").textContent = editing ? "Edit draft" : "Draft a personal message";
-  $("#draft-submit").textContent = editing ? "✦ Regenerate draft" : "✦ Generate draft";
+  $("#draft-title").dataset.editing = editing ? "yes" : "";
+  if (editing) $("#draft-title").textContent = "Edit draft";
+  else updateDraftHeading();
+  $("#draft-submit").textContent = editing ? "Regenerate draft" : "Generate draft";
 }
 
 function draftFields() {
@@ -992,6 +1149,7 @@ function openDraft(contactId = "") {
   hidePersonResults();
   $("#draft-schedule").classList.add("hidden");
   $("#draft-result").classList.add("hidden");
+  $("#draft-send-options").classList.add("hidden");
   $("#delete-open-draft").dataset.confirm = "";
   $("#delete-open-draft").textContent = "Delete";
   state.draft = null;
@@ -1011,6 +1169,49 @@ function updateChannelHint() {
 
 $("#message-channel").addEventListener("change", updateChannelHint);
 
+$("#draft-memories").addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-draft-memory]");
+  if (!chip) return;
+  const on = chip.getAttribute("aria-pressed") !== "true";
+  chip.setAttribute("aria-pressed", on ? "true" : "false");
+  chip.classList.toggle("on", on);
+  $("#generate-message").disabled = !$("#draft-memories").querySelector("[aria-pressed='true']");
+});
+
+$("#generate-message").addEventListener("click", async () => {
+  const texts = [...$("#draft-memories").querySelectorAll("[aria-pressed='true']")].map((chip) => chip.textContent.trim());
+  const lowered = texts.join(" ").toLowerCase();
+  const reason = lowered.includes("birthday") ? "birthday" : lowered.includes("anniver") ? "congratulations" : "check_in";
+  try {
+    await startDraft(reason, texts.length ? `Mention ${texts.join(", ")}.` : "");
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+$("#draft-form").addEventListener("click", async (event) => {
+  const topic = event.target.closest("[data-draft-reason]");
+  if (!topic) return;
+  try {
+    await startDraft(topic.dataset.draftReason);
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
+$("#draft-other-go").addEventListener("click", async () => {
+  const note = $("#draft-other").value.trim();
+  if (!note) {
+    toast("Say what the message is about.");
+    return;
+  }
+  try {
+    await startDraft("custom", note);
+  } catch (error) {
+    toast(error.message);
+  }
+});
+
 function openSavedDraft(message) {
   openDraft(message.contact);
   const form = $("#draft-form");
@@ -1023,6 +1224,7 @@ function openSavedDraft(message) {
   state.draft = message;
   $("#draft-body").value = message.body;
   $("#draft-result").classList.remove("hidden");
+  $("#draft-send-options").classList.remove("hidden");
   setDraftMode(true);
   if (message.scheduled_for && message.status !== "draft") {
     const note = $("#draft-schedule");
@@ -1056,6 +1258,7 @@ $("#draft-form").addEventListener("submit", async (event) => {
     }
     $("#draft-body").value = state.draft.body;
     $("#draft-result").classList.remove("hidden");
+    $("#draft-send-options").classList.remove("hidden");
     $("#draft-schedule").classList.add("hidden");
     setDraftMode(true);
     await loadData();

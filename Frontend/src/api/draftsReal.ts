@@ -39,6 +39,7 @@ function withContactDetails(draft: Draft, contact: ApiContact | undefined): Draf
     ...draft,
     contactEmail: contact.email || undefined,
     contactMessenger: contact.messenger || undefined,
+    contactAvatarUrl: contact.photo || draft.contactAvatarUrl,
   };
 }
 
@@ -218,6 +219,7 @@ export const realDraftsApi: DraftsApi = {
     return {
       contactId: contact.id,
       contactName: contact.name,
+      photo: contact.photo,
       preferredChannel: channels.includes(preferred) ? preferred : (channels[0] ?? 'whatsapp'),
       channels: channels.length ? channels : ['whatsapp'],
       openMessage: open ? toOpenRef(open) : undefined,

@@ -90,6 +90,7 @@ export interface OpenMessageRef {
 export interface MessageOptions {
   contactId: string;
   contactName: string;
+  photo?: string | null;
   preferredChannel: Channel;
   channels: Channel[];
   openMessage?: OpenMessageRef;

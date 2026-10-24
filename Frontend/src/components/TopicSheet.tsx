@@ -1,10 +1,11 @@
 // STEP: Page-step 9 · M15 What's it about? (sheet)
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { contactsApi } from '../api/contactsApi';
 import { draftsApi } from '../api/drafts';
 import { useIsOffline } from '../hooks/useIsOffline';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
@@ -79,6 +80,7 @@ export default function TopicSheet({ visible, contactId, contactName, onClose, c
   const navigation = useNavigation<NativeStackNavigationProp<DraftsNavParams>>();
   const isOffline = useIsOffline();
   const [otherText, setOtherText] = useState('');
+  const [chosen, setChosen] = useState<Record<string, boolean>>({});
   const firstName = contactName.split(' ')[0];
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -86,9 +88,31 @@ export default function TopicSheet({ visible, contactId, contactName, onClose, c
     queryFn: () => draftsApi.messageOptions(contactId),
     enabled: visible,
   });
+  const memories = useQuery({
+    queryKey: ['memories', contactId],
+    queryFn: () => contactsApi.listMemories(contactId),
+    enabled: visible,
+  });
+
+  useEffect(() => {
+    if (!visible) {
+      setChosen({});
+      return;
+    }
+    if (!memories.data) return;
+    setChosen(Object.fromEntries(memories.data.map((item) => [item.id, item.selected])));
+  }, [visible, memories.data]);
 
   const create = useMutation({
-    mutationFn: (input: CreateDraftInput) => draftsApi.createDraft(contactId, input),
+    mutationFn: async (input: CreateDraftInput) => {
+      const saved = memories.data ?? [];
+      await Promise.all(
+        saved
+          .filter((item) => Boolean(chosen[item.id]) !== item.selected)
+          .map((item) => contactsApi.setMemorySelected(contactId, item.id, Boolean(chosen[item.id]))),
+      );
+      return draftsApi.createDraft(contactId, input);
+    },
     onSuccess: ({ id }) => {
       onClose();
       setOtherText('');
@@ -116,6 +140,15 @@ export default function TopicSheet({ visible, contactId, contactName, onClose, c
   const existing = data?.openMessage && data.openMessage.id !== currentDraftId ? data.openMessage : undefined;
   const existingWhen =
     existing?.status === 'scheduled' && existing.scheduledAt ? describeWhen(existing.scheduledAt, existing.timezone ?? 'UTC') : null;
+
+  const selectedMemories = (memories.data ?? []).filter((item) => chosen[item.id]);
+  const generateFromMemories = () => {
+    if (selectedMemories.length === 0) return;
+    const note = selectedMemories.map((item) => item.text).join(', ');
+    const lowered = note.toLowerCase();
+    const reason = lowered.includes('birthday') ? 'birthday' : lowered.includes('anniver') ? 'congrats' : 'check_in';
+    pick({ reason, note: `Mention ${note}.` });
+  };
 
   const otherReady = otherText.trim().length > 0;
   const otherPlaceholder = data?.ideas[0] ? `e.g. ${data.ideas[0].charAt(0).toLowerCase()}${data.ideas[0].slice(1)}` : 'e.g. ask how the new job is going';
@@ -159,6 +192,35 @@ export default function TopicSheet({ visible, contactId, contactName, onClose, c
               <Pressable onPress={() => openExisting(existing.id)} accessibilityRole="button" hitSlop={8} style={styles.bannerAction}>
                 <Text style={styles.bannerActionText}>Open it</Text>
               </Pressable>
+            </View>
+          ) : null}
+
+          {memories.data && memories.data.length > 0 ? (
+            <View style={styles.memoryBlock}>
+              <Text style={styles.memoryLabel}>Memories to include</Text>
+              <Text style={styles.memoryHint}>Select any, then generate the message. More than one can be selected.</Text>
+              <View style={styles.chips}>
+                {memories.data.map((item) => {
+                  const on = Boolean(chosen[item.id]);
+                  return (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => setChosen((current) => ({ ...current, [item.id]: !current[item.id] }))}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      style={[styles.chip, on && styles.chipOn]}
+                    >
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>{item.text}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Button
+                title="Generate message"
+                onPress={generateFromMemories}
+                disabled={aiDisabled || selectedMemories.length === 0}
+                loading={create.isPending && selectedMemories.length > 0}
+              />
             </View>
           ) : null}
 
@@ -278,6 +340,21 @@ const styles = StyleSheet.create({
   // 5 topics + Something else + Write my own: scroll on small phones
   scroll: { maxHeight: Dimensions.get('window').height * 0.62 },
   list: { gap: spacing.md },
+  memoryBlock: { gap: spacing.sm },
+  memoryLabel: { fontFamily: fonts.bold, fontSize: fontSize.sm, color: colors.text },
+  memoryHint: { fontFamily: fonts.regular, fontSize: fontSize.sm, color: colors.textMuted },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  chipOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  chipText: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.textSecondary },
+  chipTextOn: { fontFamily: fonts.bold, color: colors.primaryDark },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',

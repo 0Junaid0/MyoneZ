@@ -7,9 +7,9 @@
   <title>MyoneZ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'app.css' %}?v=17">
-  <script src="{% static 'app.js' %}?v=31" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app.css' %}?v=22">
+  <script src="{% static 'app.js' %}?v=35" defer></script>
 </head>
 <body>
   <div id="toast" class="toast" role="status"></div>
@@ -19,7 +19,7 @@
       <a class="brand brand-light" href="/"><span class="brand-mark">M</span> MyoneZ</a>
       <div class="story-copy">
         <span class="eyebrow">Relationships, remembered</span>
-        <h1>Stay close to the people who matter.</h1>
+        <h1>Stay connected. Intentionally.</h1>
         <p>Remember the details, reconnect at the right time, and write messages that feel genuinely personal.</p>
       </div>
       <div class="story-card">
@@ -32,7 +32,7 @@
       <div class="auth-box">
         <div class="mobile-brand brand"><span class="brand-mark">M</span> MyoneZ</div>
         <span class="eyebrow accent">Welcome back</span>
-        <h2 id="auth-title">Sign in to your space</h2>
+        <h2 id="auth-title">Log in</h2>
         <p id="auth-subtitle" class="muted">Your relationships are private and always yours.</p>
         <form id="auth-form">
           <div id="name-field" class="field hidden">
@@ -61,96 +61,81 @@
   </main>
 
   <div id="app-shell" class="app-shell hidden">
-    <aside class="sidebar">
-      <a class="brand" href="#"><span class="brand-mark">M</span> MyoneZ</a>
-      <nav>
-        <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
-        <button class="nav-item" data-view="contacts"><span>♙</span> People</button>
-        <button class="nav-item" data-view="touchpoints"><span>◷</span> Touchpoints</button>
-        <button class="nav-item" data-view="drafts"><span>✎</span> Drafts</button>
-        <button class="nav-item" data-view="email"><span>✉</span> Email</button>
-      </nav>
-      <div class="sidebar-note">
-        <span class="note-icon">✦</span>
-        <strong>Thoughtful by design</strong>
-        <p>Your memories are only used for drafting when you allow it.</p>
-      </div>
-      <div class="profile">
-        <span id="user-avatar" class="avatar">U</span>
-        <span><strong id="user-name">User</strong><small id="user-email"></small></span>
-        <button id="logout-button" class="button secondary" type="button">Sign out</button>
-      </div>
-    </aside>
-
     <div class="workspace">
       <header class="topbar">
-        <button id="menu-button" class="icon-button mobile-menu">☰</button>
         <div>
-          <p id="today-label" class="overline"></p>
-          <h2 id="page-title">Good to see you</h2>
+          <p id="today-label" class="date-line"></p>
+          <h2 id="page-title">Good morning</h2>
         </div>
-        <div class="top-actions">
-          <button id="draft-button" class="button secondary">✦ Draft a message</button>
-          <button id="add-contact-button" class="button primary">＋ Add person</button>
+        <div class="profile-chip">
+          <span id="user-avatar" class="avatar">U</span>
+          <span class="profile-copy"><strong id="user-name">User</strong><small id="user-email"></small></span>
+          <button id="logout-button" class="text-button" type="button">Sign out</button>
         </div>
       </header>
 
       <main class="content">
         <div id="due-sends"></div>
         <section id="overview-view" class="view">
-          <div class="hero">
+          <article class="navy-card">
             <div>
-              <span class="eyebrow">Your relationship rhythm</span>
-              <h1>A little attention goes a long way.</h1>
-              <p id="hero-copy">See who could use a hello and keep your relationships moving.</p>
+              <h3 id="hero-drafts">No drafts waiting</h3>
+              <p id="hero-copy">Nothing overdue.</p>
             </div>
-            <div class="hero-orbit"><span>♥</span><i></i><i></i><i></i></div>
-          </div>
+            <button class="hero-action" type="button" data-go="drafts">Review drafts</button>
+          </article>
           <div id="stats-grid" class="stats-grid"></div>
-          <div class="grid-two">
-            <section class="panel">
-              <div class="panel-heading">
-                <div><span class="overline">Coming up</span><h3>People to reach out to</h3></div>
-                <button class="text-button" data-go="touchpoints">View all</button>
-              </div>
-              <div id="upcoming-list" class="list"></div>
-            </section>
-            <section class="panel">
-              <div class="panel-heading">
-                <div><span class="overline">Your circle</span><h3>Recently added</h3></div>
-                <button class="text-button" data-go="contacts">View all</button>
-              </div>
-              <div id="recent-contacts" class="contact-grid compact"></div>
-            </section>
+          <div class="section-row">
+            <h3>Up next</h3>
+            <button class="text-button" type="button" data-go="touchpoints">See schedule</button>
           </div>
+          <div id="upcoming-list" class="list card"></div>
         </section>
 
         <section id="contacts-view" class="view hidden">
-          <div class="section-heading">
-            <div><span class="eyebrow accent">Your people</span><h1>Relationships worth remembering</h1></div>
-            <div class="search"><span>⌕</span><input id="contact-search" placeholder="Search by name, email, or number"></div>
+          <div class="toolbar">
+            <button id="add-contact-button" class="button primary" type="button">Add contact</button>
+          </div>
+          <div class="search"><span>⌕</span><input id="contact-search" placeholder="Search by name, email, or number"></div>
+          <div class="draft-tabs" id="contact-filters">
+            <button class="draft-tab active" type="button" data-rel="all">All</button>
+            <button class="draft-tab" type="button" data-rel="friend">Friends</button>
+            <button class="draft-tab" type="button" data-rel="family">Family</button>
+            <button class="draft-tab" type="button" data-rel="colleague">Colleagues</button>
+            <button class="draft-tab" type="button" data-rel="mentor">Mentors</button>
+            <button class="draft-tab" type="button" data-rel="other">Other</button>
           </div>
           <div id="contacts-grid" class="contact-grid"></div>
         </section>
 
-        <section id="touchpoints-view" class="view hidden">
-          <div class="section-heading">
-            <div><span class="eyebrow accent">Stay in touch</span><h1>Upcoming touchpoints</h1></div>
-          </div>
-          <div id="touchpoints-list" class="timeline-list"></div>
-        </section>
-
         <section id="drafts-view" class="view hidden">
-          <div class="section-heading">
-            <div><span class="eyebrow accent">By send time</span><h1>Drafts and scheduled</h1></div>
-            <div class="search"><span>⌕</span><input id="draft-search" placeholder="Search by name, email, or number"></div>
+          <div class="toolbar">
+            <button id="draft-button" class="button primary" type="button">New message</button>
+          </div>
+          <div class="search"><span>⌕</span><input id="draft-search" placeholder="Search by name, email, or number"></div>
+          <div class="draft-tabs">
+            <button class="draft-tab active" type="button" data-draft-tab="review">To review</button>
+            <button class="draft-tab" type="button" data-draft-tab="scheduled">Scheduled</button>
+            <button class="draft-tab" type="button" data-draft-tab="sent">Sent</button>
+            <button class="draft-tab" type="button" data-draft-tab="failed">Failed</button>
           </div>
           <div id="drafts-list"></div>
         </section>
 
+        <section id="touchpoints-view" class="view hidden">
+          <div id="touchpoints-list" class="timeline-list card"></div>
+        </section>
+
         <section id="email-view" class="view hidden">
-          <div class="section-heading">
-            <div><span class="eyebrow accent">Sending account</span><h1>Email</h1></div>
+          <div class="panel photo-panel">
+            <span id="settings-avatar" class="avatar large">U</span>
+            <div>
+              <strong>Your photo</strong>
+              <p class="hint">Shown on your profile in this app and on the phone.</p>
+              <label class="button secondary photo-picker">Change photo
+                <input id="user-photo" type="file" accept="image/jpeg,image/png,image/webp">
+              </label>
+            </div>
           </div>
           <form id="email-form" class="panel form-grid">
             <div class="field span-two"><label for="mail-from">Sending address</label><input id="mail-from" name="from_email" type="email" placeholder="you@gmail.com" required></div>
@@ -166,6 +151,14 @@
           </form>
         </section>
       </main>
+      <nav class="tabbar" aria-label="Main">
+        <button class="nav-item active" type="button" data-view="overview"><span>⌂</span>Home</button>
+        <button class="nav-item" type="button" data-view="contacts"><span>☺</span>Contacts</button>
+        <button class="nav-item" type="button" data-view="drafts"><span>✎</span>Drafts</button>
+        <button class="nav-item" type="button" data-view="touchpoints"><span>◷</span>Schedule</button>
+        <button class="nav-item" type="button" data-view="email"><span>⚙</span>Settings</button>
+      </nav>
+      <button class="fab" type="button" data-open-draft aria-label="New message">＋</button>
     </div>
   </div>
 
@@ -175,6 +168,10 @@
       <span class="eyebrow accent" id="contact-kicker">Grow your circle</span>
       <h2 id="contact-title">Add someone important</h2>
       <form id="contact-form" class="form-grid">
+        <div class="field span-two photo-field">
+          <span id="contact-photo-preview" class="avatar large">+</span>
+          <label>Photo<input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        </div>
         <div class="field span-two"><label>Name</label><input name="name" required placeholder="Full name"></div>
         <div class="field"><label>Relationship</label><select name="relationship"><option value="friend">Friend</option><option value="family">Family</option><option value="colleague">Colleague</option><option value="mentor">Mentor</option><option value="other">Other</option></select></div>
         <div class="field"><label>Preferred channel</label><select name="preferred_channel"><option value="">Not set</option><option value="whatsapp">WhatsApp</option><option value="email">Gmail</option><option value="telegram">Telegram</option><option value="messenger">Messenger</option></select></div>
@@ -264,8 +261,8 @@
 
     <section id="draft-modal" class="modal hidden" role="dialog" aria-modal="true">
       <button class="modal-close" data-close>×</button>
-      <span class="eyebrow accent">Write thoughtfully</span>
-      <h2 id="draft-title">Draft a personal message</h2>
+      <h2 id="draft-title">Message</h2>
+      <p id="draft-subtitle" class="hint">What's it about? We'll write a draft from what you know.</p>
       <form id="draft-form" class="form-grid">
         <div class="field span-two">
           <label for="draft-contact-search">Person</label>
@@ -275,24 +272,39 @@
             <div id="draft-contact-list" class="person-results hidden"></div>
           </div>
         </div>
-        <div class="field"><label>Purpose</label><select name="purpose"><option value="check_in">Check in</option><option value="reconnect">Reconnect</option><option value="birthday">Birthday</option><option value="congratulations">Congratulations</option><option value="gratitude">Gratitude</option></select></div>
-        <div class="field"><label>Tone</label><select name="tone"><option value="friendly">Friendly</option><option value="warm">Warm</option><option value="casual">Casual</option><option value="professional">Professional</option></select></div>
-        <div class="field"><label>Length</label><select name="length"><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></div>
-        <div class="field"><label>Direction</label><input name="custom_instruction" placeholder="Mention their new role"></div>
-        <div class="field span-two"><label for="message-channel">Send through</label><select id="message-channel" name="channel"><option value="whatsapp">WhatsApp</option><option value="email">Gmail</option><option value="telegram">Telegram</option><option value="messenger">Messenger</option></select><p id="channel-hint" class="hint"></p></div>
-        <div class="field span-two">
-          <label for="send-in">Schedule</label>
-          <div class="schedule-inputs">
-            <input id="send-in" name="send_in" type="number" min="1" max="36500" value="1" required>
-            <select id="send-unit" name="send_unit">
-              <option value="minutes">Minutes</option>
-              <option value="hours">Hours</option>
-              <option value="days" selected>Days</option>
-            </select>
+        <div id="draft-memories" class="span-two"></div>
+        <button id="generate-message" class="button primary span-two" type="button" disabled>Generate message</button>
+        <div class="topic-list span-two">
+          <button class="topic-row" type="button" data-draft-reason="check_in"><span><strong>Check in</strong><small>A light hello, built from what you know</small></span><span aria-hidden="true">›</span></button>
+          <button class="topic-row" type="button" data-draft-reason="reconnect"><span><strong>Reconnect</strong><small>It has been a while, pick things up again</small></span><span aria-hidden="true">›</span></button>
+          <button class="topic-row" type="button" data-draft-reason="birthday"><span><strong>Birthday</strong><small>Wish them a happy birthday</small></span><span aria-hidden="true">›</span></button>
+          <button class="topic-row" type="button" data-draft-reason="congratulations"><span><strong>Congratulations</strong><small>Celebrate good news</small></span><span aria-hidden="true">›</span></button>
+          <button class="topic-row" type="button" data-draft-reason="gratitude"><span><strong>Gratitude</strong><small>Say thanks for something they did</small></span><span aria-hidden="true">›</span></button>
+          <div class="topic-row topic-static"><span><strong>Something else</strong><small>Tell us in a few words</small></span></div>
+          <div class="other-row">
+            <input id="draft-other" type="text" maxlength="140" placeholder="e.g. lunch">
+            <button id="draft-other-go" class="button primary" type="button" aria-label="Write a draft">→</button>
           </div>
-          <p class="hint">From 1 minute to any number of days.</p>
         </div>
-        <button id="draft-submit" class="button primary span-two" type="submit">✦ Generate draft</button>
+        <select class="hidden" name="purpose"><option value="check_in">Check in</option><option value="reconnect">Reconnect</option><option value="birthday">Birthday</option><option value="congratulations">Congratulations</option><option value="gratitude">Gratitude</option><option value="custom">Custom</option></select>
+        <select class="hidden" name="tone"><option value="warm" selected>Warm</option><option value="friendly">Friendly</option><option value="casual">Casual</option><option value="professional">Professional</option></select>
+        <select class="hidden" name="length"><option value="medium" selected>Medium</option><option value="short">Short</option><option value="long">Long</option></select>
+        <input class="hidden" name="custom_instruction">
+        <div id="draft-send-options" class="span-two hidden">
+          <div class="field"><label for="message-channel">Send through</label><select id="message-channel" name="channel"><option value="whatsapp">WhatsApp</option><option value="email">Gmail</option><option value="telegram">Telegram</option><option value="messenger">Messenger</option></select><p id="channel-hint" class="hint"></p></div>
+          <div class="field">
+            <label for="send-in">Schedule</label>
+            <div class="schedule-inputs">
+              <input id="send-in" name="send_in" type="number" min="1" max="36500" value="1" required>
+              <select id="send-unit" name="send_unit">
+                <option value="minutes">Minutes</option>
+                <option value="hours">Hours</option>
+                <option value="days" selected>Days</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button id="draft-submit" class="hidden" type="submit">Generate draft</button>
       </form>
       <div id="draft-result" class="draft-result hidden">
         <label for="draft-body">Your draft</label>

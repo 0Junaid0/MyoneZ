@@ -23,6 +23,7 @@ export type ScheduleItemProps = {
   subtitle: string;
   leading: ScheduleLeading;
   trailing: ScheduleTrailing;
+  imageUri?: string | null;
   onPress?: () => void;
 };
 
@@ -37,6 +38,7 @@ export default function ScheduleItem({
   subtitle,
   leading,
   trailing,
+  imageUri,
   onPress,
 }: ScheduleItemProps): React.JSX.Element {
   return (
@@ -47,11 +49,10 @@ export default function ScheduleItem({
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`${name}, ${subtitle}`}
     >
-      {leading.type === 'avatar' ? (
-        <Avatar name={name} size={44} />
-      ) : (
-        <Text style={styles.leadingText}>{leading.text}</Text>
-      )}
+      {leading.type === 'avatar' || imageUri ? (
+        <Avatar name={name} size={44} imageUri={imageUri} />
+      ) : null}
+      {leading.type === 'text' ? <Text style={styles.leadingText}>{leading.text}</Text> : null}
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>

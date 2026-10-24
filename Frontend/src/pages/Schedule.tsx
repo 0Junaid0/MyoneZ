@@ -24,6 +24,7 @@ export type ScheduleAction = {
   id: string;
   contactId: string;
   contactName: string;
+  avatarUrl?: string | null;
   kind: Kind;
   channel: Channel;
   date: Date;
@@ -150,6 +151,7 @@ export default function Schedule(): React.JSX.Element {
                   <ScheduleItem
                     name={a.contactName}
                     subtitle={subtitleOf(a)}
+                    imageUri={a.avatarUrl}
                     leading={{ type: 'avatar' }}
                     trailing={{ type: 'text', text: `since ${isSameDay(a.date, today) && a.time ? a.time : shortDate(a.date)}`, danger: true }}
                     onPress={() => openAction(a)}
@@ -172,6 +174,7 @@ export default function Schedule(): React.JSX.Element {
                   <ScheduleItem
                     name={a.contactName}
                     subtitle={subtitleOf(a)}
+                    imageUri={a.avatarUrl}
                     leading={{ type: 'text', text: a.time ?? '—' }}
                     trailing={
                       a.status === 'ready'
@@ -196,6 +199,7 @@ export default function Schedule(): React.JSX.Element {
                   <ScheduleItem
                     name={a.contactName}
                     subtitle={subtitleOf(a)}
+                    imageUri={a.avatarUrl}
                     leading={{ type: 'text', text: `${WEEKDAYS[a.date.getDay()]} ${a.date.getDate()}` }}
                     trailing={{ type: 'chevron' }}
                     onPress={() => openAction(a)}

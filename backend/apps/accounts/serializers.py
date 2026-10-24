@@ -3,6 +3,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.contrib.auth import authenticate, password_validation
 from rest_framework import serializers
 
+from apps.photos import PhotoSerializerMixin
+
 from .models import Device, EmailAccount, User
 
 
@@ -14,12 +16,13 @@ def validate_timezone(value):
     return value
 
 
-class UserSerializer(serializers.ModelSerializer):
-    timezone = serializers.CharField(validators=[validate_timezone])
+class UserSerializer(PhotoSerializerMixin, serializers.ModelSerializer):
+    timezone = serializers.CharField(validators=[validate_timezone], required=False)
+    photo = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "name", "timezone", "date_joined"]
+        fields = ["id", "email", "name", "photo", "timezone", "date_joined"]
         read_only_fields = ["id", "email", "date_joined"]
 
 
