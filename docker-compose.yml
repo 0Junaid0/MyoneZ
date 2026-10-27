@@ -1,4 +1,20 @@
 services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pocketcrm
+      POSTGRES_USER: pocketcrm
+      POSTGRES_PASSWORD: pocketcrm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pocketcrm -d pocketcrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:8-alpine
     command: redis-server --appendonly yes
@@ -18,7 +34,9 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-only-unsafe-key-7Zp4vQ9xLm2cN8sT5wR1kF6jH3dB0yG}
-      SQLITE_PATH: /data/db.sqlite3
+      DATABASE_URL: postgresql://pocketcrm:pocketcrm@db:5432/pocketcrm
+      DATABASE_SSL_REQUIRE: "false"
+      MEDIA_ROOT: /data/media
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_COOKIE_SECURE: ${JWT_COOKIE_SECURE:-false}
       SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-false}
@@ -30,8 +48,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - sqlite_data:/data
+      - media_data:/data
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -55,5 +75,7 @@ services:
       disable: true
 
 volumes:
+  postgres_data:
   sqlite_data:
+  media_data:
   redis_data:

@@ -1,6 +1,6 @@
 # MyoneZ
 
-API-first personal relationship manager built with Django, SQLite, Redis, and Celery.
+API-first personal relationship manager built with Django, PostgreSQL, Redis, and Celery.
 
 This repository has the API, the browser app, and the phone app:
 
@@ -9,7 +9,7 @@ This repository has the API, the browser app, and the phone app:
 
 ## Run it on your computer
 
-You need Python 3.13 or newer. Git must be installed. Redis and Docker are not required for this path. The app keeps its data in `backend/db.sqlite3`, which is created when you migrate. That file is not in Git.
+You need Python 3.13 or newer, Git, and Docker Desktop. Redis is not required for this path. The app keeps its data in PostgreSQL. Docker publishes that database on port 5433, because a Windows PostgreSQL install often already uses port 5432. The database name, user, and password are `pocketcrm`.
 
 ### 1. Clone the repository
 
@@ -81,16 +81,17 @@ OPENAI_MODEL=gemini-3.8-flash
 
 The server reads `.env` only when it starts. Restart it after changing these values.
 
-### 4. Create the database
+### 4. Start PostgreSQL and create the tables
 
-From the `backend` folder:
+Docker Desktop must be running. From the project folder:
 
 ```bash
+docker compose up -d db
 cd backend
 python manage.py migrate
 ```
 
-This creates `backend/db.sqlite3`.
+This uses `postgresql://pocketcrm:pocketcrm@127.0.0.1:5433/pocketcrm`. Stop the database later with `docker compose stop db`. That does not delete the data.
 
 ### 5. Optional: load the demo person
 
@@ -118,7 +119,7 @@ Leave that window open. Open http://127.0.0.1:8000/ in a browser.
 
 Register or sign in. If mail is configured, enter the 6-digit code from the email. With the console email backend, the code is shown on the sign-in screen and printed in the terminal. The code expires in 10 minutes. After that, add a person, save memories, and check the ones that should be used in drafts and shown as the reason for a touchpoint.
 
-Stop the server with Ctrl+C. Start it again later with the virtual environment activated and `python manage.py runserver 127.0.0.1:8000` from `backend`. Your people and messages stay in `backend/db.sqlite3`.
+Stop the server with Ctrl+C. Start it again later with the virtual environment activated and `python manage.py runserver 127.0.0.1:8000` from `backend`. Start PostgreSQL first with `docker compose up -d db` if it is not already running. Your people and messages stay in that database.
 
 ## Run it with Docker
 
@@ -135,7 +136,7 @@ The web app and API are on port 8000. Create the demo account with:
 docker compose exec api python manage.py seed_demo
 ```
 
-Docker stores the database in a volume at `/data/db.sqlite3`. Redis runs in Compose for the background worker. The local `runserver` path above does not need Redis.
+Docker stores PostgreSQL in the `postgres_data` volume and photos in `media_data`. Redis runs in Compose for the background worker. The local `runserver` path above does not need Redis. Do not run `docker compose down -v`; that deletes the database volume.
 
 ## Authentication
 
@@ -175,22 +176,20 @@ docker compose run --rm api python manage.py spectacular --validate --file opena
 
 ### Backup and restore
 
-Copy the SQLite file and routinely verify that the copy opens:
+Dump the database and routinely verify that the copy restores:
 
 ```bash
-docker compose cp api:/data/db.sqlite3 ./myonez.sqlite3
+docker compose exec db pg_dump -U pocketcrm -d pocketcrm > myonez.sql
 ```
 
-Local development stores the same data at `backend/db.sqlite3`. Before restoring, stop the
-API and workers, replace the database file, run `python manage.py migrate`, verify counts
-and representative records, then restart services.
+Before restoring, stop the API and workers, restore into `pocketcrm`, run `python manage.py migrate`, verify counts and representative records, then restart services.
 Retention and encryption policies must match the deployment's privacy requirements.
 
 ## Hosted API
 
 The preview phone build calls `https://myonez.vercel.app`. That host does not read the `.env` file on your computer. Set the same `EMAIL_*`, `DEFAULT_FROM_EMAIL`, `OPENAI_*`, and `DJANGO_SECRET_KEY` values in the Vercel project, then redeploy. Until the mail variables are set there, the phone shows the 6-digit code on screen instead of emailing it.
 
-Vercel has no durable disk. With `DATABASE_URL` set, uploads live in temporary storage. Docker, which uses `SQLITE_PATH`, keeps photos beside the database file.
+Vercel has no durable disk. With `DATABASE_URL` set there, uploads live in temporary storage. Docker keeps photos in the `media_data` volume.
 
 `backend/requirements.txt` is the dependency list the Vercel Python build installs. `pyproject.toml` stays in the repository because local tests and Ruff read it.
 

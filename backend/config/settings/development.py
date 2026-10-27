@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+import dj_database_url
+
 
 def _load_dotenv():
     path = Path(__file__).resolve().parents[3] / ".env"
@@ -25,11 +27,15 @@ SECRET_KEY = "dev-only-pocket-crm-local-signing-key"
 
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
+# The project database is PostgreSQL in Docker, published on 5433 because
+# the Windows PostgreSQL service already listens on 5432.
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
-    }
+    "default": dj_database_url.parse(
+        os.getenv(
+            "DATABASE_URL",
+            "postgresql://pocketcrm:pocketcrm@127.0.0.1:5433/pocketcrm",
+        )
+    )
 }
 JWT_COOKIE_SECURE = False
 STORAGES["staticfiles"] = {  # noqa: F405
