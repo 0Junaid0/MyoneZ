@@ -86,7 +86,7 @@ def generate_draft(contact, purpose, tone, length, instruction="", include_histo
     client = OpenAI(
         api_key=settings.OPENAI_API_KEY,
         base_url=settings.OPENAI_BASE_URL,
-        timeout=15,
+        timeout=30,
         max_retries=1,
     )
     system = (
@@ -105,12 +105,16 @@ def generate_draft(contact, purpose, tone, length, instruction="", include_histo
         "context": context,
     }
     try:
-        response = client.responses.create(
+        # Chat Completions works for OpenAI and for Gemini's compatible endpoint.
+        # Gemini does not implement the Responses API (client.responses.create).
+        response = client.chat.completions.create(
             model=settings.OPENAI_MODEL,
-            instructions=system,
-            input=json.dumps(prompt),
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": json.dumps(prompt)},
+            ],
         )
-        body = response.output_text.strip()
+        body = (response.choices[0].message.content or "").strip()
         if body:
             return GeneratedDraft(body, "openai-compatible", context)
     except Exception:  # Provider outage must not block the core workflow.
