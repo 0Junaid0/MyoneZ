@@ -9,7 +9,7 @@ from apps.integrations.handoff import CHANNEL_LABELS, SEND_CHANNELS, build_messa
 from apps.schedules.models import Schedule, Touchpoint
 
 from .models import DeliveryAttempt, Message, SendNotification
-from .push import push_data
+from .push import push_data, queue_push
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def dispatch_due_messages(user=None):
 @transaction.atomic
 def dispatch_message(message_id):
     message = (
-        Message.objects.select_for_update()
+        Message.objects.select_for_update(of=("self",))
         .select_related("contact__user__email_account", "touchpoint")
         .get(pk=message_id)
     )
@@ -144,6 +144,8 @@ def dispatch_message(message_id):
             "route": f"/send/{message.id}",
         },
     )
+    if _created:
+        queue_push(note)
     return notification_payload(note)
 
 
@@ -162,13 +164,14 @@ def remind_unsent_messages(user=None):
         body = "A day has passed since it was due. Open it when you are ready to send."
         note = SendNotification.objects.filter(message=message).first()
         if note is None:
-            SendNotification.objects.create(
+            note = SendNotification.objects.create(
                 user=contact.user,
                 message=message,
                 title=title,
                 body=body,
                 route=f"/send/{message.id}",
             )
+            queue_push(note)
             continue
         if note.title == title:
             continue
@@ -177,6 +180,7 @@ def remind_unsent_messages(user=None):
         note.opened_at = None
         note.route = f"/send/{message.id}"
         note.save(update_fields=["title", "body", "opened_at", "route"])
+        queue_push(note)
 
 
 def notify_due_touchpoints(user=None):
@@ -201,7 +205,7 @@ def notify_due_touchpoints(user=None):
         pending = pending.filter(schedule__contact__user=user)
     for point in pending:
         contact = point.schedule.contact
-        SendNotification.objects.get_or_create(
+        note, _created = SendNotification.objects.get_or_create(
             touchpoint=point,
             defaults={
                 "user": contact.user,
@@ -210,6 +214,8 @@ def notify_due_touchpoints(user=None):
                 "route": f"/touchpoints/{point.id}",
             },
         )
+        if _created:
+            queue_push(note)
 
 
 def notification_payload(note):

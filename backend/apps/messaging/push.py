@@ -1,16 +1,7 @@
-"""Phone push notifications through Expo's push service.
-
-Every in-app notification (SendNotification) is also pushed to the user's phones.
-The ``data`` block matches what the mobile app reads when a push is tapped
-(Frontend/src/notifications/useNotificationNavigation.ts):
-
-    {"type": "reminder", "draft_id": "<message id>", "contact_id": "..."}  -> Review draft
-    {"type": "check_in", "contact_id": "..."}                              -> Contact detail
-"""
+"""Phone push notifications through Expo's push service."""
 
 import json
 import logging
-import threading
 import urllib.request
 
 from django.conf import settings
@@ -36,13 +27,11 @@ def push_data(note):
 
 
 def queue_push(note):
-    """Sends the push after the database commit, on a background thread (never blocks a request)."""
+    """Sends the push immediately after the database commit (serverless-safe)."""
     if not getattr(settings, "EXPO_PUSH_ENABLED", False):
         return
     note_id = note.pk
-    transaction.on_commit(
-        lambda: threading.Thread(target=deliver_push, args=(note_id,), daemon=True).start()
-    )
+    transaction.on_commit(lambda: deliver_push(note_id))
 
 
 def deliver_push(note_id):
@@ -67,7 +56,8 @@ def deliver_push(note_id):
             "body": note.body,
             "data": data,
             "sound": "default",
-            "channelId": "default",  # the Android channel the app creates (notifications/push.ts)
+            "priority": "high",
+            "channelId": "default",
         }
         for token in tokens
     ]
@@ -78,12 +68,11 @@ def deliver_push(note_id):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 (fixed https URL)
+        with urllib.request.urlopen(request, timeout=5) as response:  # noqa: S310
             tickets = json.loads(response.read().decode()).get("data", [])
     except Exception:
         logger.exception("Push to Expo failed for notification %s", note_id)
         return
-    # Expo answers one ticket per message, in order. Forget phones that uninstalled the app.
     for token, ticket in zip(tokens, tickets, strict=False):
         if ticket.get("status") == "error":
             if (ticket.get("details") or {}).get("error") == "DeviceNotRegistered":

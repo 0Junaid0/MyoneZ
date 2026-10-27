@@ -18,6 +18,7 @@
       }
     },
     "android": {
+      "package": "com.myonez.app",
       "adaptiveIcon": {
         "backgroundColor": "#1E3A8A",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -44,6 +45,12 @@
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b177314b-0bb7-43b4-9b92-39ddb7b0b049"
+      }
+    },
+    "owner": "sadat-samin"
   }
 }

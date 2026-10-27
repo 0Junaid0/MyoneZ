@@ -2,14 +2,6 @@
  * ===============================================================
  *  FILE: notifications/push.ts
  *  OWNER: Member 1  |  PHASE: 3 (Push Notifications)
- *  WHAT: Everything about phone push notifications:
- *    1. How a notification looks when the app is open
- *    2. Check / ask notification permission
- *    3. Get this phone's Expo push token and send it to the backend
- *    4. Open the phone's Settings if the user said "No" before
- *  BACKEND: POST /api/devices/  { token, platform }
- *  NOTE: Push tokens only work on a real phone, not a simulator.
- *        app.json must have extra.eas.projectId (run `eas init` once).
  * ===============================================================
  */
 import { Linking, Platform } from 'react-native';
@@ -22,9 +14,12 @@ import { Notifications } from './notificationsModule';
 /** 'unavailable' = Expo Go on Android (no notifications there; use a development build) */
 export type PushPermission = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
+const shownNotificationIds = new Set<string>();
+
 /* ---------- 1. Show banners even while the app is open ---------- */
 Notifications?.setNotificationHandler({
   handleNotification: async () => ({
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -33,11 +28,12 @@ Notifications?.setNotificationHandler({
 });
 
 /** Android needs a channel before it can show notifications */
-async function ensureAndroidChannel(): Promise<void> {
+export async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android' || !Notifications) return;
   await Notifications.setNotificationChannelAsync('default', {
     name: 'Reminders and drafts',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
     lightColor: '#1D4ED8',
   });
 }
@@ -70,17 +66,38 @@ export async function requestPushPermission(): Promise<PushPermission> {
   return toPermission(status);
 }
 
-/* ---------- 3. Send this phone's token to the backend ---------- */
-/**
- * Returns true when the token was saved on the server.
- * Safe to call many times; the backend should update the same token.
- */
+/* ---------- 3. Trigger Android System Tray Notification Directly ---------- */
+export async function presentLocalNotification(note: {
+  id: string;
+  title: string;
+  body: string;
+  push?: Record<string, unknown>;
+}): Promise<void> {
+  if (!Notifications || shownNotificationIds.has(note.id)) return;
+  const perm = await requestPushPermission();
+  if (perm !== 'granted') return;
+
+  shownNotificationIds.add(note.id);
+  await ensureAndroidChannel();
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: note.title,
+      body: note.body,
+      data: note.push ?? {},
+      sound: 'default',
+    },
+    trigger: null, // Shows immediately in the Android notification shade
+  });
+}
+
+/* ---------- 4. Send this phone's token to the backend ---------- */
 export async function registerDeviceForPush(): Promise<boolean> {
   if (!Device.isDevice) {
-    // simulator / emulator: no push token available
     return false;
   }
   if (!Notifications || (await getPushPermission()) !== 'granted') return false;
+
+  await ensureAndroidChannel();
 
   const projectId: string | undefined =
     Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
@@ -89,16 +106,22 @@ export async function registerDeviceForPush(): Promise<boolean> {
     return false;
   }
 
-  await ensureAndroidChannel();
-  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-  await deviceApi.register({
-    token,
-    platform: Platform.OS === 'ios' ? 'ios' : 'android',
-  });
-  return true;
+  try {
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await deviceApi.register({
+      token,
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    });
+    return true;
+  } catch (err) {
+    // Expected on Android standalone APK if Firebase (FCM) is not configured;
+    // local system tray notifications via presentLocalNotification still work!
+    console.warn('[push] Remote push token skipped (using local notifications):', err);
+    return false;
+  }
 }
 
-/* ---------- 4. Settings (after the user said "No") ---------- */
+/* ---------- 5. Settings (after the user said "No") ---------- */
 export async function openNotificationSettings(): Promise<void> {
   await Linking.openSettings();
 }
