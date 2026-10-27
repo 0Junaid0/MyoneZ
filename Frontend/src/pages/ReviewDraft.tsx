@@ -26,6 +26,7 @@ import UseAnotherMedium from '../components/UseAnotherMedium';
 import { useExternalAppReturn } from '../hooks/useExternalAppReturn';
 import { useRefreshOnFocus } from '../hooks/useRefreshOnFocus';
 import { useIsOffline } from '../hooks/useIsOffline';
+import { scheduleFutureLocalNotification } from '../notifications/push';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
 import { Channel, DraftLength, ScheduleSelection, Tone } from '../types/draft';
 import type { DraftsNavParams } from '../types/navigation';
@@ -306,9 +307,24 @@ export default function ReviewDraft({ route, navigation }: Props): React.JSX.Ele
     try {
       await saveEdits();
       const scheduled = await draftsApi.schedule(draftId, selection);
+      const targetTimeStr = scheduled.scheduledAt ?? selection.scheduledAt;
+      if (targetTimeStr && draft) {
+        const chosenChannel = selection.channel ?? channel;
+        void scheduleFutureLocalNotification({
+          id: `draft-${draftId}`,
+          title: `Message for ${draft.contactName}`,
+          body: `Your ${CHANNEL_LABEL[chosenChannel] ?? 'scheduled'} message is ready to send.`,
+          triggerDate: new Date(targetTimeStr),
+          push: {
+            type: 'reminder',
+            draft_id: draftId,
+            contact_id: draft.contactId,
+          },
+        });
+      }
       refreshLists();
       setScheduleOpen(false);
-      showToast(`Scheduled for ${describeWhen(scheduled.scheduledAt ?? selection.scheduledAt, selection.timezone).toLowerCase()}`);
+      showToast(`Scheduled for ${describeWhen(targetTimeStr, selection.timezone).toLowerCase()}`);
       leaveSoon();
     } catch (e) {
       showToast(getErrorMessage(e), 'error');

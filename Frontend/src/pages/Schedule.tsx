@@ -13,8 +13,10 @@ import ScheduleItem from '../components/ScheduleItem';
 // Member 1's components. Check props if they differ.
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
+import { scheduleFutureLocalNotification } from '../notifications/push';
 import EmptyState from '../components/EmptyState';
 import { colors, fonts, fontSize, radius, spacing } from '../theme/tokens';
+
 
 /** 'later' = everything scheduled after the next 30 days (no upper limit) */
 type Range = 7 | 14 | 30 | 'later';
@@ -78,7 +80,29 @@ export default function Schedule(): React.JSX.Element {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      setActions(await fetchSchedule());
+      const list = await fetchSchedule();
+      setActions(list);
+
+      // Register local notifications for future scheduled items on this device.
+      for (const item of list) {
+        if (item.status === 'scheduled' && item.date.getTime() > Date.now()) {
+          void scheduleFutureLocalNotification({
+            id: item.draftId ? `draft-${item.draftId}` : `schedule-${item.id}`,
+            title: `${item.kind} with ${item.contactName}`,
+            body: `Your ${item.channel} ${item.kind.toLowerCase()} is ready.`,
+            triggerDate: item.date,
+            push: item.draftId
+              ? {
+                  type: 'reminder',
+                  draft_id: item.draftId,
+                  contact_id: item.contactId,
+                }
+              : { type: 'check_in', contact_id: item.contactId },
+          }).catch((notificationError: unknown) => {
+            console.warn('[schedule] Could not register local notification:', notificationError);
+          });
+        }
+      }
     } catch {
       setError('Could not load your schedule.');
     } finally {
