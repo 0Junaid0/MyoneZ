@@ -1,10 +1,17 @@
 import os
 from pathlib import Path
+
 import dj_database_url
 
 from .base import *  # noqa: F403
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "fallback-prod-secret-change-in-vercel")
+# Vercel can boot without a secret so the first deploy is visible. Docker and
+# any other production host must set DJANGO_SECRET_KEY.
+SECRET_KEY = (
+    os.environ.get("DJANGO_SECRET_KEY", "fallback-prod-secret-change-in-vercel")
+    if os.getenv("VERCEL")
+    else os.environ["DJANGO_SECRET_KEY"]
+)
 
 # Allow all *.vercel.app domains plus any custom domains in DJANGO_ALLOWED_HOSTS
 ALLOWED_HOSTS = [
@@ -35,6 +42,10 @@ else:
             "OPTIONS": {"timeout": 20},
         }
     }
+    # Docker keeps photos beside the database file. Vercel has no durable disk.
+    MEDIA_ROOT = (
+        Path(_sqlite_path).parent / "media" if _sqlite_path else Path("/tmp/media")
+    )
 
 # Serve static files directly via WhiteNoise without requiring a separate manifest build step
 STORAGES["staticfiles"] = {  # noqa: F405
@@ -47,8 +58,9 @@ if not os.getenv("REDIS_URL"):
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
 
-# Use temp storage for any temporary file handling on Vercel's read-only filesystem
-MEDIA_ROOT = Path("/tmp/media")
+if os.getenv("DATABASE_URL"):
+    # Cloud Postgres on Vercel has no durable disk for uploads.
+    MEDIA_ROOT = Path("/tmp/media")
 
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() == "true"
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))

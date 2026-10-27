@@ -215,17 +215,8 @@ def test_new_notification_is_pushed_in_the_format_the_app_reads():
         sent["body"] = json.loads(request.data.decode())
         return FakeResponse()
 
-    started = []
-    with (
-        mock.patch("apps.messaging.push.urllib.request.urlopen", fake_urlopen),
-        mock.patch(
-            "apps.messaging.push.threading.Thread",
-            side_effect=lambda target, args, daemon: started.append((target, args)) or mock.Mock(),
-        ),
-    ):
+    with mock.patch("apps.messaging.push.urllib.request.urlopen", fake_urlopen):
         dispatch_due_messages(user)
-        for target, args in started:  # run the background send right here
-            target(*args)
 
     assert sent["url"] == "https://push.test/send"
     first = sent["body"][0]

@@ -56,8 +56,10 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-Open `.env` and set the mail account if you want registration and login codes delivered by email:
+Open `.env` and set the mail account so registration and login codes are delivered by email:
 
+- `EMAIL_BACKEND` stays `django.core.mail.backends.smtp.EmailBackend`.
+- `EMAIL_HOST` is `smtp.gmail.com`, `EMAIL_PORT` is `587`, and `EMAIL_USE_TLS` is `true`.
 - `EMAIL_HOST_USER` is the Gmail address that sends the code.
 - `EMAIL_HOST_PASSWORD` is that account's Gmail app password, with the spaces removed.
 - `DEFAULT_FROM_EMAIL` is the same Gmail address.
@@ -68,7 +70,16 @@ To try the app before mail is configured, set this instead:
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 ```
 
-The 6-digit code is then shown on the sign-in screen and printed in the terminal. `OPENAI_API_KEY` can stay empty. Drafts use a built-in template until a key is added.
+The 6-digit code is then shown on the sign-in screen and printed in the terminal. With the SMTP settings above, the code is emailed and the screen does not show it.
+
+`OPENAI_API_KEY` can stay empty. Drafts then use a built-in template. To draft with Gemini, set the key from [Google AI Studio](https://aistudio.google.com/apikey) and:
+
+```text
+OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+OPENAI_MODEL=gemini-3.8-flash
+```
+
+The server reads `.env` only when it starts. Restart it after changing these values.
 
 ### 4. Create the database
 
@@ -144,8 +155,7 @@ set `JWT_COOKIE_SECURE=false` only for local HTTP development.
 7. Open the returned WhatsApp URL. The system records a handoff, not a delivery receipt.
 8. Record the interaction with its `touchpoint`; this completes it and schedules the next one.
 
-When `OPENAI_API_KEY` is absent or the configured OpenAI-compatible provider is unavailable,
-drafting falls back to a deterministic local template.
+When `OPENAI_API_KEY` is absent, or Gemini does not answer within 30 seconds, drafting falls back to a deterministic local template. The draft call uses Chat Completions, which is the endpoint Gemini's compatible API accepts.
 
 ## Quality checks
 
@@ -176,6 +186,14 @@ API and workers, replace the database file, run `python manage.py migrate`, veri
 and representative records, then restart services.
 Retention and encryption policies must match the deployment's privacy requirements.
 
+## Hosted API
+
+The preview phone build calls `https://myonez.vercel.app`. That host does not read the `.env` file on your computer. Set the same `EMAIL_*`, `DEFAULT_FROM_EMAIL`, `OPENAI_*`, and `DJANGO_SECRET_KEY` values in the Vercel project, then redeploy. Until the mail variables are set there, the phone shows the 6-digit code on screen instead of emailing it.
+
+Vercel has no durable disk. With `DATABASE_URL` set, uploads live in temporary storage. Docker, which uses `SQLITE_PATH`, keeps photos beside the database file.
+
+`backend/requirements.txt` is the dependency list the Vercel Python build installs. `pyproject.toml` stays in the repository because local tests and Ruff read it.
+
 ## Frontend (mobile app)
 
 `Frontend/` is an Expo + React Native app. It talks to the same API as the browser app. What the backend requires from a client:
@@ -200,4 +218,12 @@ Run both:
 
 Settings (default channel, tone, notifications) are stored on the phone because the API has no settings endpoint.
 
-Push notifications need a real phone and an Expo project id: run `npx eas-cli@latest init` once in `Frontend/` so `app.json` gets `extra.eas.projectId`. The backend sends pushes through Expo (`EXPO_PUSH_ENABLED=true` by default; set it to `false` to turn them off).
+Push notifications need a real phone and the Expo project already named in `Frontend/app.json`. A member of that Expo project signs in from `Frontend/` with `npx eas-cli@latest login` (a GitHub login opens the browser; it has no Expo password), then builds a preview APK with:
+
+```powershell
+npx eas-cli@latest build --platform android --profile preview
+```
+
+The preview profile bakes `EXPO_PUBLIC_API_URL=https://myonez.vercel.app/` into the app. While developing against this computer, run `npx expo start` instead and keep `Frontend/.env` pointed at `http://<your-PC-Wi-Fi-IP>:8000`.
+
+Due check-ins can raise an Android tray notification, including one scheduled to fire after the app is closed. The app asks for notification permission once, when you sign in. The backend sends remote pushes through Expo when `EXPO_PUSH_ENABLED` is `true`.

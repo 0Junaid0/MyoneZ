@@ -89,7 +89,7 @@ export async function presentLocalNotification(note: {
 }): Promise<void> {
   if (!Notifications || shownNotificationIds.has(note.id)) return;
 
-  const perm = await requestPushPermission();
+  const perm = await getPushPermission();
   if (perm !== 'granted') return;
 
   shownNotificationIds.add(note.id);
