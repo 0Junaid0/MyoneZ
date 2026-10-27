@@ -87,7 +87,7 @@ def dispatch_due_messages(user=None):
 @transaction.atomic
 def dispatch_message(message_id):
     message = (
-        Message.objects.select_for_update()
+        Message.objects.select_for_update(of=("self",))
         .select_related("contact__user__email_account", "touchpoint")
         .get(pk=message_id)
     )
