@@ -3,7 +3,7 @@
 //   signed out -> Login / Signup / ForgotPassword
 //   signed in  -> Tabs (Home, Contacts, Drafts, Schedule, Settings) + full-screen pages
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -19,10 +19,12 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 
 import { PERSIST_MAX_AGE, queryClient, queryPersister } from './api/queryClient';
+import { notificationsApi } from './api/notificationsApi';
 import { navigationRef } from './navigation/navigationRef';
 import type { ContactsStackParamList, RootStackParamList, TabParamList } from './navigation/types';
 import { useAuthStore } from './store/auth'; // Member 1: status = 'loading' | 'signedOut' | 'signedIn'
 import { navigateToTarget as openPushTarget, useNotificationNavigation } from './notifications/useNotificationNavigation';
+import { requestPushPermission } from './notifications/push';
 import { colors } from './theme/tokens';
 
 import BottomTabBar from './components/BottomTabBar';
@@ -90,6 +92,28 @@ function RootNavigator(): React.JSX.Element {
   useEffect(() => {
     void useAuthStore.getState().restoreSession();
   }, []);
+
+  // Poll for due notifications & trigger Android system tray banners while signed in
+  useEffect(() => {
+    if (status !== 'signedIn') return;
+
+    void requestPushPermission();
+
+    const checkDueNotifications = () => {
+      void notificationsApi.list().catch(() => undefined);
+    };
+
+    checkDueNotifications();
+    const timer = setInterval(checkDueNotifications, 20000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkDueNotifications();
+    });
+
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [status]);
 
   // Tapping a push notification opens the right screen (waits until logged in)
   useNotificationNavigation((target) => {

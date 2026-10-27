@@ -4,12 +4,13 @@
  *  WHAT: In-app notifications from the Django API
  *        (/api/v1/notifications/). The backend only lists the
  *        ones not opened yet; opening one removes it.
- *  USED BY: pages/Notifications.tsx
+ *  USED BY: pages/Notifications.tsx, App.tsx
  * ===============================================================
  */
 import { apiClient } from './client';
 import { releaseDue } from './homeApi';
 import type { AppNotification } from '../components/NotificationItem';
+import { presentLocalNotification } from '../notifications/push';
 
 interface ApiNotification {
   id: string;
@@ -19,6 +20,7 @@ interface ApiNotification {
   title: string;
   body: string;
   created_at: string;
+  push?: Record<string, unknown>;
 }
 
 function toNotification(n: ApiNotification): AppNotification {
@@ -41,7 +43,24 @@ export const notificationsApi = {
   async list(): Promise<AppNotification[]> {
     await releaseDue();
     const res = await apiClient.get<{ results: ApiNotification[] }>('/notifications/');
-    return res.data.results.map(toNotification);
+    const results = res.data.results ?? [];
+
+    // Trigger Android system tray notification for each new unread item
+    for (const n of results) {
+      const fallbackPush =
+        n.kind === 'message' && n.message_id
+          ? { type: 'reminder', draft_id: n.message_id, contact_id: n.contact_id, notification_id: n.id }
+          : { type: 'check_in', contact_id: n.contact_id, notification_id: n.id };
+
+      void presentLocalNotification({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        push: n.push ?? fallbackPush,
+      });
+    }
+
+    return results.map(toNotification);
   },
   async open(id: string): Promise<void> {
     await apiClient.post(`/notifications/${id}/open/`);
